@@ -164,6 +164,7 @@ bool partieTerminee(const Awale *jeu)
 }
 
 // Fonction principale
+/*
 int main()
 {
     Awale jeu;
@@ -177,3 +178,4 @@ int main()
     printf("Partie terminée ! Score final : Joueur 1 - %d, Joueur 2 - %d\n", jeu.scoreJoueur1, jeu.scoreJoueur2);
     return 0;
 }
+*/
