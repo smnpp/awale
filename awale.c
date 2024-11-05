@@ -23,21 +23,29 @@ void initialiserPlateau(Awale *jeu)
 }
 
 // Afficher le plateau de jeu
+// Afficher le plateau de jeu en vue du dessus
 void afficherPlateau(const Awale *jeu)
 {
     printf("==============================\n");
+
+    // Afficher le camp du Joueur 2 de droite à gauche
     printf("Camp Joueur 2 : ");
-    for (int i = TROUS / 2; i < TROUS; i++)
+    for (int i = TROUS - 1; i >= TROUS / 2; i--)
     {
         printf("%d ", jeu->trous[i]);
     }
-    printf("\nCamp Joueur 1 : ");
-    for (int i = TROUS / 2 - 1; i >= 0; i--)
+    printf("\n");
+
+    // Afficher le camp du Joueur 1 de gauche à droite
+    printf("Camp Joueur 1 : ");
+    for (int i = 0; i < TROUS / 2; i++)
     {
         printf("%d ", jeu->trous[i]);
     }
-    printf("\n==============================");
-    printf("\nScore Joueur 1: %d | Score Joueur 2: %d\n", jeu->scoreJoueur1, jeu->scoreJoueur2);
+    printf("\n");
+
+    printf("==============================\n");
+    printf("Score Joueur 1: %d | Score Joueur 2: %d\n", jeu->scoreJoueur1, jeu->scoreJoueur2);
 }
 
 // Fonction pour distribuer les graines
@@ -50,9 +58,12 @@ void distribuerGraines(Awale *jeu, int trou)
     // Distribuer les graines une par une
     while (graines > 0)
     {
-        index = (index - 1) % TROUS;
-        jeu->trous[index]++;
-        graines--;
+        index = (index + 1) % TROUS;
+        if (index != trou)
+        { // Éviter de remettre une graine dans le trou d'origine
+            jeu->trous[index]++;
+            graines--;
+        }
     }
 }
 
@@ -60,13 +71,13 @@ void distribuerGraines(Awale *jeu, int trou)
 void capturerGraines(Awale *jeu, int dernierTrou, bool joueur1)
 {
     int *score = joueur1 ? &jeu->scoreJoueur1 : &jeu->scoreJoueur2;
-    while (dernierTrou >= (joueur1 ? 0 : TROUS / 2) && dernierTrou < (joueur1 ? TROUS / 2 : TROUS))
+    while ((dernierTrou >= (joueur1 ? 0 : TROUS / 2)) && (dernierTrou < (joueur1 ? TROUS / 2 : TROUS)))
     {
         if (jeu->trous[dernierTrou] == 2 || jeu->trous[dernierTrou] == 3)
         {
             *score += jeu->trous[dernierTrou];
             jeu->trous[dernierTrou] = 0;
-            dernierTrou--;
+            dernierTrou = (dernierTrou - 1 + TROUS) % TROUS; // Avancer vers la gauche
         }
         else
         {
@@ -76,20 +87,43 @@ void capturerGraines(Awale *jeu, int dernierTrou, bool joueur1)
 }
 
 // Fonction principale pour jouer un tour
+// Fonction principale pour jouer un tour
 void jouerTour(Awale *jeu, bool joueur1)
 {
     int trou;
     afficherPlateau(jeu);
-    printf("Joueur %d, choisissez un trou (0 à 5): ", joueur1 ? 1 : 2);
+
+    if (joueur1)
+    {
+        printf("Joueur 1, choisissez un trou (0 à 5): ");
+    }
+    else
+    {
+        printf("Joueur 2, choisissez un trou (6 à 11): ");
+    }
     scanf("%d", &trou);
 
     // Vérification de la validité de l'entrée
-    int index = joueur1 ? TROUS / 2 - 1 - trou : trou + TROUS / 2;
-    if (trou < 0 || trou > 5 || jeu->trous[index] == 0)
+    int index;
+    if (joueur1)
     {
-        printf("Entrée invalide ou trou vide. Choisissez un autre trou.\n");
-        jouerTour(jeu, joueur1);
-        return;
+        if (trou < 0 || trou > 5 || jeu->trous[trou] == 0)
+        {
+            printf("Entrée invalide ou trou vide. Choisissez un autre trou.\n");
+            jouerTour(jeu, joueur1);
+            return;
+        }
+        index = trou; // Trous 0 à 5 pour le Joueur 1
+    }
+    else
+    {
+        if (trou < 6 || trou > 11 || jeu->trous[trou] == 0)
+        {
+            printf("Entrée invalide ou trou vide. Choisissez un autre trou.\n");
+            jouerTour(jeu, joueur1);
+            return;
+        }
+        index = trou; // Trous 6 à 11 pour le Joueur 2
     }
 
     distribuerGraines(jeu, index);
