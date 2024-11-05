@@ -50,7 +50,7 @@ void afficherPlateau(const Awale *jeu)
 }
 
 // Fonction pour distribuer les graines
-void distribuerGraines(Awale *jeu, int trou)
+int distribuerGraines(Awale *jeu, int trou)
 {
     int graines = jeu->trous[trou];
     jeu->trous[trou] = 0;
@@ -66,35 +66,40 @@ void distribuerGraines(Awale *jeu, int trou)
             graines--;
         }
     }
+    return index; // Retourne le dernier trou où une graine a été déposée
 }
 
 // Fonction pour capturer les graines
 void capturerGraines(Awale *jeu, int dernierTrou)
 {
-    // Déterminer le score du joueur en fonction du tour
-    int score = (jeu->tour % 2 == 0) ? jeu->scoreJoueur1 : jeu->scoreJoueur2;
+    // Déterminer le joueur actuel
+    bool joueur1 = (jeu->tour % 2 == 0);
+    int *score = joueur1 ? &jeu->scoreJoueur1 : &jeu->scoreJoueur2;
 
-    // Vérifier les captures dans le camp de l'adversaire
-    while ((jeu->tour % 2 == 0 && dernierTrou >= 6 && dernierTrou <= 11) ||
-           (jeu->tour % 2 != 0 && dernierTrou >= 0 && dernierTrou <= 5))
+    // Capture des graines dans le camp de l'adversaire
+    while ((joueur1 && dernierTrou >= 6 && dernierTrou <= 11) ||
+           (!joueur1 && dernierTrou >= 0 && dernierTrou <= 5))
     {
+        // Vérifie si le trou contient 2 ou 3 graines pour capturer
         if (jeu->trous[dernierTrou] == 2 || jeu->trous[dernierTrou] == 3)
         {
-            score += jeu->trous[dernierTrou];
+            *score += jeu->trous[dernierTrou];
             jeu->trous[dernierTrou] = 0;
-            dernierTrou--;
-            if (jeu->tour % 2 == 0 && dernierTrou < 6)
+            dernierTrou--; // Aller au trou précédent pour continuer la capture
+
+            // Conditions de sortie pour éviter de capturer dans le propre camp du joueur
+            if (joueur1 && dernierTrou < 6)
             {
-                jeu->scoreJoueur1 = score;
+                break; // Arrêtez si le joueur 1 sort du camp de Joueur 2
             }
-            else if (jeu->tour % 2 != 0 && dernierTrou < 0)
+            else if (!joueur1 && dernierTrou < 0)
             {
-                jeu->scoreJoueur2 = score;
+                break; // Arrêtez si le joueur 2 sort du camp de Joueur 1
             }
         }
         else
         {
-            break;
+            break; // Arrête la capture si le trou ne contient pas 2 ou 3 graines
         }
     }
 }
@@ -139,8 +144,9 @@ void jouerTour(Awale *jeu)
         index = trou; // Trous 6 à 11 pour le Joueur 2
     }
 
-    distribuerGraines(jeu, index);
-    capturerGraines(jeu, index); // Capture des graines
+    // Distribuer les graines et obtenir le dernier trou
+    int dernierTrou = distribuerGraines(jeu, index);
+    capturerGraines(jeu, dernierTrou); // Capturer les graines depuis le dernier trou
 
     jeu->tour++; // Incrémenter le tour après chaque tour
 }
