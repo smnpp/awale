@@ -39,8 +39,9 @@ void distribuerGraines(Awale *jeu, int trou) {
     int index = trou;
 
     // Distribuer les graines une par une
-    while (graines > 0) {
-        index = (index + 1) % TROUS;
+    while (graines > 0)
+    {
+        index = (index - 1) % TROUS;
         jeu->trous[index]++;
         graines--;
     }
