@@ -41,11 +41,11 @@ $(SERVER_EXEC): $(SERVER_OBJ)
 	$(CC) $(CFLAGS) -o $@ $(SERVER_OBJ)
 
 # Règle pour compiler client.o dans le répertoire build/Client
-$(CLIENT_BUILD_DIR)/client.o: Client/client.c | $(CLIENT_BUILD_DIR)
+$(CLIENT_BUILD_DIR)/client.o: Client/client.c Client/client.h | $(CLIENT_BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Règle pour compiler server.o dans le répertoire build/Serveur
-$(SERVER_BUILD_DIR)/server.o: Serveur/server.c | $(SERVER_BUILD_DIR)
+$(SERVER_BUILD_DIR)/server.o: Serveur/server.c Serveur/server.h | $(SERVER_BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Règle pour compiler awale.o dans le répertoire build
