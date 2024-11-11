@@ -30,27 +30,18 @@ static void app(void)
 {
    SOCKET sock = init_connection();
    char buffer[BUF_SIZE];
-   /* the index for the array */
    int actual = 0;
    int max = sock;
-   /* an array for all clients */
    Client clients[MAX_CLIENTS];
-
    fd_set rdfs;
 
    while (1)
    {
-      int i = 0;
       FD_ZERO(&rdfs);
-
-      /* add STDIN_FILENO */
       FD_SET(STDIN_FILENO, &rdfs);
-
-      /* add the connection socket */
       FD_SET(sock, &rdfs);
 
-      /* add socket of each client */
-      for (i = 0; i < actual; i++)
+      for (int i = 0; i < actual; i++)
       {
          FD_SET(clients[i].sock, &rdfs);
       }
@@ -61,15 +52,12 @@ static void app(void)
          exit(errno);
       }
 
-      /* something from standard input : i.e keyboard */
       if (FD_ISSET(STDIN_FILENO, &rdfs))
       {
-         /* stop process when type on keyboard */
          break;
       }
       else if (FD_ISSET(sock, &rdfs))
       {
-         /* new client */
          SOCKADDR_IN csin = {0};
          socklen_t sinsize = sizeof csin;
          int csock = accept(sock, (SOCKADDR *)&csin, &sinsize);
@@ -79,45 +67,45 @@ static void app(void)
             continue;
          }
 
-         /* after connecting the client sends its name */
-         if (read_client(csock, buffer) == -1)
+         if (read_client(csock, buffer) > 0)
          {
-            /* disconnected */
-            continue;
+            if (inscrireClient(buffer) == 1)
+            {
+
+               max = csock > max ? csock : max;
+               Client c = {csock};
+               strncpy(c.name, buffer, BUF_SIZE - 1);
+               clients[actual++] = c;
+               write_client(csock, "Vous êtes connecté au serveur de chat\n");
+            }
+            else
+            {
+               write_client(csock, "Client déjà connecté ou erreur d'inscription");
+               closesocket(csock);
+            }
          }
-
-         /* what is the new maximum fd ? */
-         max = csock > max ? csock : max;
-
-         FD_SET(csock, &rdfs);
-
-         Client c = {csock};
-         strncpy(c.name, buffer, BUF_SIZE - 1);
-         clients[actual] = c;
-         actual++;
+         else
+         {
+            perror("Erreur lors de la réception du nom du client");
+            closesocket(csock);
+         }
       }
       else
       {
-         int i = 0;
-         for (i = 0; i < actual; i++)
+         for (int i = 0; i < actual; i++)
          {
-            /* a client is talking */
             if (FD_ISSET(clients[i].sock, &rdfs))
             {
                Client client = clients[i];
-               int c = read_client(clients[i].sock, buffer);
-               /* client disconnected */
-               if (c == 0)
+               if (read_client(clients[i].sock, buffer) == 0)
                {
                   closesocket(clients[i].sock);
                   remove_client(clients, i, &actual);
-                  strncpy(buffer, client.name, BUF_SIZE - 1);
-                  strncat(buffer, " disconnected !", BUF_SIZE - strlen(buffer) - 1);
+                  snprintf(buffer, BUF_SIZE, "%s disconnected !", client.name);
                   send_message_to_all_clients(clients, client, actual, buffer, 1);
                }
                else
                {
-                  printf("Message from %s : %s\n", client.name, buffer);
                   send_message_to_all_clients(clients, client, actual, buffer, 0);
                }
                break;
@@ -132,8 +120,7 @@ static void app(void)
 
 static void clear_clients(Client *clients, int actual)
 {
-   int i = 0;
-   for (i = 0; i < actual; i++)
+   for (int i = 0; i < actual; i++)
    {
       closesocket(clients[i].sock);
    }
@@ -141,20 +128,16 @@ static void clear_clients(Client *clients, int actual)
 
 static void remove_client(Client *clients, int to_remove, int *actual)
 {
-   /* we remove the client in the array */
    memmove(clients + to_remove, clients + to_remove + 1, (*actual - to_remove - 1) * sizeof(Client));
-   /* number client - 1 */
    (*actual)--;
 }
 
 static void send_message_to_all_clients(Client *clients, Client sender, int actual, const char *buffer, char from_server)
 {
-   int i = 0;
    char message[BUF_SIZE];
    message[0] = 0;
-   for (i = 0; i < actual; i++)
+   for (int i = 0; i < actual; i++)
    {
-      /* we don't send message to the sender */
       if (sender.sock != clients[i].sock)
       {
          if (from_server == 0)
@@ -205,17 +188,13 @@ static void end_connection(int sock)
 
 static int read_client(SOCKET sock, char *buffer)
 {
-   int n = 0;
-
-   if ((n = recv(sock, buffer, BUF_SIZE - 1, 0)) < 0)
+   int n = recv(sock, buffer, BUF_SIZE - 1, 0);
+   if (n < 0)
    {
       perror("recv()");
-      /* if recv error we disonnect the client */
       n = 0;
    }
-
    buffer[n] = 0;
-
    return n;
 }
 
@@ -228,13 +207,70 @@ static void write_client(SOCKET sock, const char *buffer)
    }
 }
 
+static int inscrireClient(const char *name)
+{
+   printf("Inscription du client %s\n", name);
+   fflush(stdout);
+   FILE *fichier = fopen("./data/clients.csv", "r+");
+
+   FILE *tempFile = fopen("./data/temp.csv", "w");
+   if (!fichier || !tempFile)
+   {
+      perror("Erreur d'ouverture des fichiers");
+      return -1;
+   }
+   char name_used[256];
+   snprintf(name_used, sizeof(name_used), "%s,", name);
+   char line[256];
+   int clientExists = 0, clientConnected = 0;
+   while (fgets(line, sizeof(line), fichier))
+   {
+      if (strstr(line, name_used))
+      {
+
+         clientExists = 1;
+         if (strstr(line, ",connected"))
+         {
+            clientConnected = 1;
+         }
+         else
+         {
+            fprintf(tempFile, "%s,connected\n", name);
+         }
+      }
+      else
+      {
+         fputs(line, tempFile);
+      }
+   }
+
+   if (!clientExists)
+   {
+      fprintf(tempFile, "%s,connected\n", name);
+   }
+   else if (clientConnected)
+   {
+      printf("Client %s déjà connecté\n", name);
+      fflush(stdout);
+      fclose(fichier);
+      fclose(tempFile);
+      remove("./data/temp.csv");
+      return 2;
+   }
+
+   fclose(fichier);
+   fclose(tempFile);
+   rename("./data/temp.csv", "./data/clients.csv");
+
+   printf("Client %s inscrit et connecté\n", name);
+   fflush(stdout);
+   return 1;
+}
+
 int main(int argc, char **argv)
 {
    init();
-
    app();
-
    end();
-
    return EXIT_SUCCESS;
 }
