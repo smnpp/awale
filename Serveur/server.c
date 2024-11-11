@@ -76,7 +76,54 @@ static void app(void)
                Client c = {csock};
                strncpy(c.name, buffer, BUF_SIZE - 1);
                clients[actual++] = c;
-               write_client(csock, "Vous êtes connecté au serveur de chat\n");
+               write_client(csock, "Vous êtes connecté au serveur de chat\n 1: jouer avec un autre client\n 2: se deconnecter\n");
+               read_client(csock, buffer);
+
+               if (strcmp(buffer, "1") == 0)
+               {
+                  write_client(csock, "Vous avez choisi de jouer avec un autre client\nVoici la liste des clients connectés:\n");
+
+                  char **clientsList = listClients(); // Récupère la liste des clients connectés
+                  if (clientsList != NULL)            // Vérifie si la liste n'est pas NULL
+                  {
+                     int i = 0;
+                     while (clientsList[i] != NULL)
+                     {
+                        // Envoie chaque client avec une nouvelle ligne
+                        if (strcmp(clientsList[i], c.name) != 0)
+                        {
+                           write_client(csock, clientsList[i]);
+                           write_client(csock, "\n");
+                        } // Ajouter un saut de ligne entre les noms
+                        i++;
+                     }
+
+                     // Libération de la mémoire allouée pour clientsList
+                     for (int i = 0; clientsList[i] != NULL; i++)
+                     {
+                        free(clientsList[i]); // Libérer chaque chaîne allouée
+                     }
+                     free(clientsList); // Libérer le tableau de pointeurs
+                  }
+                  else
+                  {
+                     write_client(csock, "Erreur lors de la récupération de la liste des clients\n");
+                  }
+               }
+
+               else if (strcmp(buffer, "2") == 0)
+               {
+                  write_client(csock, "Vous avez choisi de vous deconnecter\n");
+                  closesocket(csock);
+                  // disconnect_client(clients, actual - 1, &actual);
+                  remove_client(clients, actual - 1, &actual);
+               }
+               else
+               {
+                  write_client(csock, "Choix invalide\n");
+                  closesocket(csock);
+                  remove_client(clients, actual - 1, &actual);
+               }
             }
             else
             {
@@ -229,13 +276,13 @@ static int inscrireClient(const char *name)
       {
 
          clientExists = 1;
-         if (strstr(line, ",connected"))
+         if (strstr(line, "+"))
          {
             clientConnected = 1;
          }
          else
          {
-            fprintf(tempFile, "%s,connected\n", name);
+            fprintf(tempFile, "%s, +\n", name);
          }
       }
       else
@@ -246,7 +293,7 @@ static int inscrireClient(const char *name)
 
    if (!clientExists)
    {
-      fprintf(tempFile, "%s,connected\n", name);
+      fprintf(tempFile, "%s, +\n", name);
    }
    else if (clientConnected)
    {
@@ -265,6 +312,80 @@ static int inscrireClient(const char *name)
    printf("Client %s inscrit et connecté\n", name);
    fflush(stdout);
    return 1;
+}
+static char **listClients()
+{
+   FILE *fichier = fopen("./data/clients.csv", "r");
+   if (!fichier)
+   {
+      perror("Erreur d'ouverture du fichier");
+      return NULL;
+   }
+
+   // Allouer un tableau de chaînes initial, mais le redimensionner si nécessaire
+   char **clientsList = malloc(10 * sizeof(char *)); // Commence avec 10 éléments
+   if (!clientsList)
+   {
+      perror("Erreur d'allocation de mémoire pour clientsList");
+      fclose(fichier);
+      return NULL;
+   }
+
+   char line[256];
+   int i = 0;
+   while (fgets(line, sizeof(line), fichier))
+   {
+      // Récupérer le nom du client (avant la virgule)
+      char *name = strtok(line, ",");
+
+      // Vérifier si le client est connecté
+      char *status = strtok(NULL, ","); // Récupère le statut après la virgule
+      if (name && status && strstr(status, "+"))
+      {
+         printf("Client %d: %s\n", i, name);
+         fflush(stdout);
+
+         // Vérifier si on doit réallouer plus de mémoire pour les clients
+         if (i >= 10)
+         {
+            // Redimensionner le tableau (ajouter plus de place si nécessaire)
+            char **temp = realloc(clientsList, (i + 10) * sizeof(char *));
+            if (!temp)
+            {
+               perror("Erreur de réallocation de mémoire");
+               // Libérer la mémoire allouée avant de quitter
+               for (int j = 0; j < i; j++)
+                  free(clientsList[j]);
+               free(clientsList);
+               fclose(fichier);
+               return NULL;
+            }
+            clientsList = temp;
+         }
+
+         // Allouer de la mémoire pour le nom du client et l'ajouter à la liste
+         clientsList[i] = malloc(256 * sizeof(char));
+         if (!clientsList[i])
+         {
+            perror("Erreur d'allocation de mémoire pour le nom du client");
+            // Libérer la mémoire allouée avant de quitter
+            for (int j = 0; j < i; j++)
+               free(clientsList[j]);
+            free(clientsList);
+            fclose(fichier);
+            return NULL;
+         }
+
+         snprintf(clientsList[i], 256, "%s", name); // Copier le nom du client
+         i++;
+      }
+   }
+
+   // Marquer la fin de la liste
+   clientsList[i] = NULL;
+
+   fclose(fichier);
+   return clientsList;
 }
 
 int main(int argc, char **argv)

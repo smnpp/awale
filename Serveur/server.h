@@ -46,5 +46,5 @@ static void send_message_to_all_clients(Client *clients, Client client, int actu
 static void remove_client(Client *clients, int to_remove, int *actual);
 static void clear_clients(Client *clients, int actual);
 static int inscrireClient(const char *name);
-
+static char **listClients();
 #endif /* guard */
