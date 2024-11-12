@@ -5,6 +5,8 @@
 
 #include "client.h"
 
+SOCKET sock;
+
 static void init(void)
 {
 #ifdef WIN32
@@ -24,7 +26,14 @@ static void end(void)
    WSACleanup();
 #endif
 }
-
+void handle_sigint(int sig)
+{
+   const char *disconnect_msg = "/disconnect";
+   write_server(sock, disconnect_msg);
+   printf("\nDéconnexion du serveur...\n");
+   closesocket(sock);
+   exit(0);
+}
 static void app(const char *address, const char *name)
 {
    SOCKET sock = init_connection(address);
@@ -154,7 +163,7 @@ int main(int argc, char **argv)
       printf("Usage : %s [address] [pseudo]\n", argv[0]);
       return EXIT_FAILURE;
    }
-
+   signal(SIGINT, handle_sigint);
    init();
 
    app(argv[1], argv[2]);

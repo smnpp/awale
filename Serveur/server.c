@@ -115,8 +115,7 @@ static void app(void)
                {
                   write_client(csock, "Vous avez choisi de vous deconnecter\n");
                   closesocket(csock);
-                  // disconnect_client(clients, actual - 1, &actual);
-                  remove_client(clients, actual - 1, &actual);
+                  deconnecterClient(clients, actual - 1, &actual);
                }
                else
                {
@@ -151,6 +150,10 @@ static void app(void)
                   snprintf(buffer, BUF_SIZE, "%s disconnected !", client.name);
                   send_message_to_all_clients(clients, client, actual, buffer, 1);
                }
+               else if (read_client(clients[i].sock, buffer) == -9)
+               {
+                  deconnecterClient(clients, i, &actual);
+               } // Si le client envoie "/disconnect"
                else
                {
                   send_message_to_all_clients(clients, client, actual, buffer, 0);
@@ -240,6 +243,10 @@ static int read_client(SOCKET sock, char *buffer)
    {
       perror("recv()");
       n = 0;
+   }
+   if (strncmp(buffer, "/disconnect", 11) == 0)
+   {
+      return -9;
    }
    buffer[n] = 0;
    return n;
@@ -386,6 +393,60 @@ static char **listClients()
 
    fclose(fichier);
    return clientsList;
+}
+static int deconnecterClient(Client *clients, int to_remove, int *actual)
+{
+   // Nom du client à déconnecter
+   const char *name = clients[to_remove].name;
+
+   printf("Déconnexion du client %s\n", name);
+   fflush(stdout);
+
+   // Ouverture du fichier clients.csv en lecture et d'un fichier temporaire en écriture
+   FILE *fichier = fopen("./data/clients.csv", "r");
+   FILE *tempFile = fopen("./data/temp2.csv", "w");
+   if (!fichier || !tempFile)
+   {
+      perror("Erreur d'ouverture des fichiers");
+      return -1;
+   }
+
+   char line[256];
+   char name_used[256];
+   snprintf(name_used, sizeof(name_used), "%s,", name);
+
+   // Lecture ligne par ligne pour mettre à jour le statut du client
+   while (fgets(line, sizeof(line), fichier))
+   {
+      // Si le nom du client est trouvé dans la ligne, on le marque comme déconnecté
+      if (strstr(line, name_used))
+      {
+         fprintf(tempFile, "%s, -\n", name);
+      }
+      else
+      {
+         // Copier les autres lignes telles quelles
+         fputs(line, tempFile);
+      }
+   }
+
+   // Fermeture des fichiers
+   fclose(fichier);
+   fclose(tempFile);
+
+   // Remplacement de clients.csv par le fichier temporaire
+   remove("./data/clients.csv");
+   rename("./data/temp2.csv", "./data/clients.csv");
+
+   // Retrait du client de la liste en mémoire
+   memmove(clients + to_remove, clients + to_remove + 1, (*actual - to_remove - 1) * sizeof(Client));
+   (*actual)--;
+   closesocket(clients[to_remove].sock);
+
+   printf("Client %s déconnecté avec succès\n", name);
+   fflush(stdout);
+
+   return 1;
 }
 
 int main(int argc, char **argv)
