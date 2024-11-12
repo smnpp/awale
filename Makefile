@@ -1,5 +1,5 @@
 # Répertoire de build
-BUILD_DIR = build
+BUILD_DIR = bin
 CLIENT_BUILD_DIR = $(BUILD_DIR)/Client
 SERVER_BUILD_DIR = $(BUILD_DIR)/Serveur
 
