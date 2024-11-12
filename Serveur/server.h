@@ -28,7 +28,7 @@ typedef struct in_addr IN_ADDR;
 #endif
 
 #define CRLF "\r\n"
-#define PORT 5789
+#define PORT 5788
 #define MAX_CLIENTS 100
 
 #define BUF_SIZE 1024
@@ -46,6 +46,6 @@ static void send_message_to_all_clients(Client *clients, Client client, int actu
 static void remove_client(Client *clients, int to_remove, int *actual);
 static void clear_clients(Client *clients, int actual);
 static int inscrireClient(const char *name);
-static char **listClients();
-static int deconnecterClient(Client *clients, int to_remove, int *actual);
+static int listClients(Client clients[], int index, int actual);
+// static int deconnecterClient(Client *clients, int to_remove, int *actual);
 #endif /* guard */
