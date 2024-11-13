@@ -41,15 +41,15 @@ $(SERVER_EXEC): $(SERVER_OBJ)
 	$(CC) $(CFLAGS) -o $@ $(SERVER_OBJ)
 
 # Règle pour compiler client.o dans le répertoire build/Client
-$(CLIENT_BUILD_DIR)/client.o: Client/client.c Client/client.h | $(CLIENT_BUILD_DIR)
+$(CLIENT_BUILD_DIR)/client.o: Client/client.c Client/client.h awale.h | $(CLIENT_BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Règle pour compiler server.o dans le répertoire build/Serveur
-$(SERVER_BUILD_DIR)/server.o: Serveur/server.c Serveur/server.h | $(SERVER_BUILD_DIR)
+$(SERVER_BUILD_DIR)/server.o: Serveur/server.c Serveur/server.h awale.h | $(SERVER_BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Règle pour compiler awale.o dans le répertoire build
-$(BUILD_DIR)/awale.o: awale.c | $(BUILD_DIR)
+$(BUILD_DIR)/awale.o: awale.c awale.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Nettoyage des fichiers objets et exécutables

@@ -1,16 +1,9 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#define TROUS 12
+#include "awale.h"
 
-// Structure pour représenter le plateau de jeu
-typedef struct
-{
-    int trous[TROUS];
-    int scoreJoueur1;
-    int scoreJoueur2;
-    int tour; // Utilisé pour déterminer quel joueur joue
-} Awale;
+#define TROUS 12
 
 // Fonction pour initialiser le plateau de jeu
 void initialiserPlateau(Awale *jeu)
