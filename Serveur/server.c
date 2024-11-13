@@ -5,6 +5,7 @@
 
 #include "server.h"
 #include "client.h"
+#include "../game.h"
 
 static void init(void)
 {
@@ -265,7 +266,7 @@ static int read_client(SOCKET sock, char *buffer)
    return n;
 }
 
-static void write_client(SOCKET sock, const char *buffer)
+void write_client(SOCKET sock, const char *buffer)
 {
    if (send(sock, buffer, strlen(buffer), 0) < 0)
    {
@@ -434,4 +435,51 @@ static int deconnecterServeur(Client *clients, int i, int *actual)
 
    closesocket(clients[i].sock);
    return 1;
+}
+
+void start_game(Client *client1, Client *client2)
+{
+   Game *game = create_game(client1, client2);
+   if (game)
+   {
+      printf("Nouvelle partie démarrée entre %s et %s\n", client1->name, client2->name);
+   }
+   else
+   {
+      printf("Limite de parties atteinte\n");
+   }
+}
+
+void parse_command(Client *client, const char *command, Client *clients, int actual)
+{
+   if (strncmp(command, "DEFY", 4) == 0)
+   {
+      char opponent_name[BUF_SIZE];
+      sscanf(command + 5, "%s", opponent_name);
+      Client *opponent = find_client_by_name(clients, actual, opponent_name);
+
+      if (opponent)
+      {
+         start_game(client, opponent);
+      }
+      else
+      {
+         write_client(client->sock, "Adversaire non trouvé\n");
+      }
+   }
+}
+
+#include <string.h>
+#include "client.h"
+
+Client *find_client_by_name(Client *clients, int actual, const char *name)
+{
+   for (int i = 0; i < actual; i++)
+   {
+      if (strcmp(clients[i].name, name) == 0)
+      {
+         return &clients[i];
+      }
+   }
+   return NULL; // Retourne NULL si le client n'est pas trouvé
 }

@@ -14,7 +14,7 @@ CFLAGS = -Wall -g
 # Fichiers sources et objets pour le client et le serveur
 CLIENT_SRC = Client/client.c awale.c game.c
 SERVER_SRC = Serveur/server.c awale.c game.c
-CLIENT_OBJ = $(CLIENT_BUILD_DIR)/client.o $(BUILD_DIR)/awale.o $(BUILD_DIR)/game.o 
+CLIENT_OBJ = $(CLIENT_BUILD_DIR)/client.o $(BUILD_DIR)/awale.o
 SERVER_OBJ = $(SERVER_BUILD_DIR)/server.o $(BUILD_DIR)/awale.o $(BUILD_DIR)/game.o 
 
 # Cible par défaut pour compiler le client et le serveur
