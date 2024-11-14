@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
 
 #include "awale.h"
 
 #define TROUS 12
+#define BUF_SIZE 512 // Taille du buffer pour les chaînes de retour
 
 // Fonction pour initialiser le plateau de jeu
 void initialiserPlateau(Awale *jeu)
@@ -17,31 +19,44 @@ void initialiserPlateau(Awale *jeu)
     jeu->tour = 0; // Tour commence à 0
 }
 
-// Afficher le plateau de jeu
-void afficherPlateau(const Awale *jeu)
+// Afficher le plateau de jeu sous forme de chaîne
+void afficherPlateau(const Awale *jeu, char *buffer)
 {
-    printf("==============================\n");
+    snprintf(buffer, BUF_SIZE, "==============================\n");
 
-    // Afficher le camp du Joueur 2 de droite à gauche
-    printf("Camp Joueur 2 : ");
+    strcat(buffer, "Camp Joueur 2 : ");
     for (int i = TROUS - 1; i >= TROUS / 2; i--)
     {
-        printf("%d ", jeu->trous[i]);
+        char trou[4];
+        snprintf(trou, sizeof(trou), "%d ", jeu->trous[i]);
+        strcat(buffer, trou);
     }
-    printf("\n");
-
-    // Afficher le camp du Joueur 1 de gauche à droite
-    printf("Camp Joueur 1 : ");
+    strcat(buffer, "\nCamp Joueur 1 : ");
     for (int i = 0; i < TROUS / 2; i++)
     {
-        printf("%d ", jeu->trous[i]);
+        char trou[4];
+        snprintf(trou, sizeof(trou), "%d ", jeu->trous[i]);
+        strcat(buffer, trou);
     }
-    printf("\n");
 
-    printf("==============================\n");
-    printf("Score Joueur 1: %d | Score Joueur 2: %d\n", jeu->scoreJoueur1, jeu->scoreJoueur2);
+    char scores[64];
+    snprintf(scores, sizeof(scores), "\n==============================\nScore Joueur 1: %d | Score Joueur 2: %d\n",
+             jeu->scoreJoueur1, jeu->scoreJoueur2);
+    strcat(buffer, scores);
 }
 
+// Fonction pour jouer un tour et renvoyer un message demandant le choix d'un trou
+void jouerTour(const Awale *jeu, char *buffer)
+{
+    if (jeu->tour % 2 == 0) // Joueur 1
+    {
+        snprintf(buffer, BUF_SIZE, "Joueur 1, choisissez un trou (0 à 5): ");
+    }
+    else // Joueur 2
+    {
+        snprintf(buffer, BUF_SIZE, "Joueur 2, choisissez un trou (6 à 11): ");
+    }
+}
 // Fonction pour distribuer les graines
 int distribuerGraines(Awale *jeu, int trou)
 {
@@ -97,55 +112,17 @@ void capturerGraines(Awale *jeu, int dernierTrou)
     }
 }
 
-// Fonction pour jouer un tour
-void jouerTour(Awale *jeu)
+// Fonction pour distribuer les graines et capturer, en renvoyant un message décrivant l’action
+int distribuerEtCapturer(Awale *jeu, int trou, char *buffer)
 {
-    int trou;
-    afficherPlateau(jeu);
-
-    // Demander au joueur de choisir un trou en fonction de son tour
-    if (jeu->tour % 2 == 0) // Joueur 1
-    {
-        printf("Joueur 1, choisissez un trou (0 à 5): ");
-    }
-    else // Joueur 2
-    {
-        printf("Joueur 2, choisissez un trou (6 à 11): ");
-    }
-    scanf("%d", &trou);
-
-    // Vérification de la validité de l'entrée
-    int index;
-    if (jeu->tour % 2 == 0) // Joueur 1
-    {
-        if (trou < 0 || trou > 5 || jeu->trous[trou] == 0)
-        {
-            printf("Entrée invalide ou trou vide. Choisissez un autre trou.\n");
-            jouerTour(jeu);
-            return;
-        }
-        index = trou; // Trous 0 à 5 pour le Joueur 1
-    }
-    else // Joueur 2
-    {
-        if (trou < 6 || trou > 11 || jeu->trous[trou] == 0)
-        {
-            printf("Entrée invalide ou trou vide. Choisissez un autre trou.\n");
-            jouerTour(jeu);
-            return;
-        }
-        index = trou; // Trous 6 à 11 pour le Joueur 2
-    }
-
-    // Distribuer les graines et obtenir le dernier trou
-    int dernierTrou = distribuerGraines(jeu, index);
-    capturerGraines(jeu, dernierTrou); // Capturer les graines depuis le dernier trou
-
-    jeu->tour++; // Incrémenter le tour après chaque tour
+    int dernierTrou = distribuerGraines(jeu, trou);
+    capturerGraines(jeu, dernierTrou);
+    snprintf(buffer, BUF_SIZE, "Graines distribuées à partir du trou %d. Dernier trou atteint : %d.\n", trou, dernierTrou);
+    return dernierTrou;
 }
 
-// Fonction pour vérifier si la partie est terminée
-bool partieTerminee(const Awale *jeu)
+// Fonction pour vérifier si la partie est terminée et renvoyer un message final
+bool partieTerminee(const Awale *jeu, char *buffer)
 {
     int grainesJoueur1 = 0, grainesJoueur2 = 0;
     for (int i = 0; i < TROUS / 2; i++)
@@ -153,22 +130,11 @@ bool partieTerminee(const Awale *jeu)
         grainesJoueur1 += jeu->trous[i];
         grainesJoueur2 += jeu->trous[i + TROUS / 2];
     }
-    return (grainesJoueur1 == 0 || grainesJoueur2 == 0 || jeu->scoreJoueur1 > 24 || jeu->scoreJoueur2 > 24);
-}
-
-// Fonction principale
-/*
-int main()
-{
-    Awale jeu;
-    initialiserPlateau(&jeu);
-
-    while (!partieTerminee(&jeu))
+    bool terminee = (grainesJoueur1 == 0 || grainesJoueur2 == 0 || jeu->scoreJoueur1 > 24 || jeu->scoreJoueur2 > 24);
+    if (terminee)
     {
-        jouerTour(&jeu);
+        snprintf(buffer, BUF_SIZE, "Partie terminée ! Score final : Joueur 1 - %d, Joueur 2 - %d\n",
+                 jeu->scoreJoueur1, jeu->scoreJoueur2);
     }
-
-    printf("Partie terminée ! Score final : Joueur 1 - %d, Joueur 2 - %d\n", jeu.scoreJoueur1, jeu.scoreJoueur2);
-    return 0;
+    return terminee;
 }
-*/

@@ -1,6 +1,7 @@
 #include "game.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 void init_game(Game *game, Client *client1, Client *client2)
 {
@@ -8,44 +9,94 @@ void init_game(Game *game, Client *client1, Client *client2)
     game->player2 = client2;
     game->current_turn = 0; // On commence avec le tour du Joueur 1
     game->game_over = 0;
-    initialiserPlateau(&game->jeu); // Utilise initialiserPlateau pour configurer le plateau
+    Client *current_client;
+    initialiserPlateau(&game->jeu); // Configure le plateau de jeu
+
+    char buffer[BUF_SIZE];
+
+    while (!partieTerminee(&game->jeu, buffer))
+    {
+        generate_board_state(game, buffer);
+        write_client(client1->sock, buffer);
+        write_client(client2->sock, buffer);
+        current_client = game->current_turn;
+        write_client(current_client->sock, "C'est votre tour !\n");
+        if (current_client == client1)
+        {
+            write_client(client2->sock, "C'est le tour de l'adversaire.\n");
+        }
+        else
+        {
+            write_client(client1->sock, "C'est le tour de l'adversaire.\n");
+        }
+        write_client(current_client->sock, "Choisissez un trou : ");
+        if (read_client(current_client->sock, buffer) > 0)
+        {
+            int move = atoi(buffer);
+            if (process_move(game, current_client, move))
+            {
+                // Si le coup est valide, on alterne les tours
+                game->current_turn = (current_client == client1) ? client2 : client1;
+            }
+            else
+            {
+                write_client(current_client->sock, "Coup invalide, essayez à nouveau.\n");
+            }
+        }
+        else
+        {
+            // Si un joueur se déconnecte, on termine la partie
+            game->game_over = 1;
+            snprintf(buffer, BUF_SIZE, "L'autre joueur a quitté la partie.\n");
+            write_client(client1->sock, buffer);
+            write_client(client2->sock, buffer);
+        }
+
+        // Vérifie si la partie est terminée
+        if (partieTerminee(&game->jeu, buffer))
+        {
+            game->game_over = 1;
+            write_client(client1->sock, buffer);
+            write_client(client2->sock, buffer);
+        }
+
+        end_game(game);
+    }
+
+    snprintf(buffer, BUF_SIZE, "Partie terminée ! Score final : Joueur 1 - %d, Joueur 2 - %d\n",
+             game->jeu.scoreJoueur1, game->jeu.scoreJoueur2);
+    write_client(client1->sock, buffer);
+    write_client(client2->sock, buffer);
 }
 
 // Gestion d'un coup joué par un joueur
-void process_move(Game *game, Client *client, int move)
+int process_move(Game *game, Client *client, int move)
 {
-    if ((game->current_turn % 2 == 0 && client != game->player1) ||
-        (game->current_turn % 2 != 0 && client != game->player2))
+    Awale *jeu = &game->jeu;
+    int index = move;
+
+    // Vérifie si le mouvement est valide pour le joueur actuel
+    char buffer[BUF_SIZE];
+    if ((client == game->player1 && (move < 0 || move > 5 || jeu->trous[move] == 0)) ||
+        (client == game->player2 && (move < 6 || move > 11 || jeu->trous[move] == 0)))
     {
-        write_client(client->sock, "Ce n'est pas votre tour!\n");
-        return;
+        snprintf(buffer, BUF_SIZE, "Mouvement invalide, choisissez un autre trou.\n");
+        write_client(client->sock, buffer);
+        return 0; // Mouvement non valide
     }
 
-    int index;
-    // Vérification de la validité du coup
-    if ((game->current_turn % 2 == 0 && (move < 0 || move > 5 || game->jeu.trous[move] == 0)) ||
-        (game->current_turn % 2 != 0 && (move < 6 || move > 11 || game->jeu.trous[move] == 0)))
-    {
-        write_client(client->sock, "Mouvement invalide! Réessayez.\n");
-        return;
-    }
-    index = move;
+    // Distribue les graines et capture
+    int dernierTrou = distribuerEtCapturer(jeu, index, buffer);
+    write_client(client->sock, buffer);
 
-    // Distribuer les graines et capturer
-    int dernierTrou = distribuerGraines(&game->jeu, index);
-    capturerGraines(&game->jeu, dernierTrou);
+    // Vérifie si le jeu est terminé
+    if (partieTerminee(jeu, buffer))
+    {
+        game->game_over = 1;
+        write_client(client->sock, buffer);
+    }
 
-    // Vérifier si la partie est terminée
-    game->game_over = partieTerminee(&game->jeu);
-    if (game->game_over)
-    {
-        end_game(game);
-    }
-    else
-    {
-        game->current_turn++; // Alterner le tour
-        send_update_to_players(game);
-    }
+    return 1; // Mouvement valide
 }
 
 // Fonction pour terminer la partie et envoyer le résultat aux joueurs
@@ -65,20 +116,7 @@ void end_game(Game *game)
 void send_update_to_players(Game *game)
 {
     char board_state[BUF_SIZE];
-    snprintf(board_state, BUF_SIZE, "Plateau: J1: ");
-    for (int i = TROUS / 2 - 1; i >= 0; i--)
-    {
-        snprintf(board_state + strlen(board_state), BUF_SIZE - strlen(board_state), "%d ", game->jeu.trous[i]);
-    }
-    snprintf(board_state + strlen(board_state), BUF_SIZE - strlen(board_state), " | J2: ");
-    for (int i = TROUS / 2; i < TROUS; i++)
-    {
-        snprintf(board_state + strlen(board_state), BUF_SIZE - strlen(board_state), "%d ", game->jeu.trous[i]);
-    }
-    snprintf(board_state + strlen(board_state), BUF_SIZE - strlen(board_state), "Scores - J1: %d, J2: %d",
-             game->jeu.scoreJoueur1, game->jeu.scoreJoueur2);
-
-    // Envoyer l'état à chaque joueur
+    generate_board_state(game, board_state);
     write_client(game->player1->sock, board_state);
     write_client(game->player2->sock, board_state);
 }
@@ -89,9 +127,34 @@ Game *create_game(Client *client1, Client *client2)
     Game *game = (Game *)malloc(sizeof(Game));
     if (game == NULL)
     {
-        perror("malloc");
+        perror("Erreur d'allocation mémoire pour Game");
         return NULL;
     }
-    init_game(game, client1, client2);
+
+    game->player1 = client1;
+    game->player2 = client2;
+    game->current_turn = client1;
+    game->game_over = 0;
+
     return game;
+}
+
+// Génère l'état du plateau sous forme de chaîne de caractères
+void generate_board_state(Game *game, char *buffer)
+{
+    snprintf(buffer, BUF_SIZE, "Plateau actuel:\nJoueur 1 (votre côté): ");
+    for (int i = 0; i < TROUS / 2; i++)
+    {
+        snprintf(buffer + strlen(buffer), BUF_SIZE - strlen(buffer), "%d ", game->jeu.trous[i]);
+    }
+
+    snprintf(buffer + strlen(buffer), BUF_SIZE - strlen(buffer), "\nJoueur 2 (opposé): ");
+    for (int i = TROUS / 2; i < TROUS; i++)
+    {
+        snprintf(buffer + strlen(buffer), BUF_SIZE - strlen(buffer), "%d ", game->jeu.trous[i]);
+    }
+
+    snprintf(buffer + strlen(buffer), BUF_SIZE - strlen(buffer),
+             "\nScores - Joueur 1: %d | Joueur 2: %d\n",
+             game->jeu.scoreJoueur1, game->jeu.scoreJoueur2);
 }
