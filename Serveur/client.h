@@ -5,7 +5,8 @@
 enum Etat
 {
    EnPartie,
-   Enattente
+   Enattente,
+   Initialisation
 };
 typedef struct
 {

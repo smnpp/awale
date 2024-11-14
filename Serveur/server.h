@@ -47,5 +47,6 @@ static void remove_client(Client *clients, int to_remove, int *actual);
 static void clear_clients(Client *clients, int actual);
 static int inscrireClient(const char *name);
 static int listClients(Client clients[], int index, int actual);
-// static int deconnecterClient(Client *clients, int to_remove, int *actual);
+static int deconnecterClient(Client *clients, int to_remove, int *actual);
+static int deconnecterServeur(Client *clients, int to_remove, int *actual);
 #endif /* guard */

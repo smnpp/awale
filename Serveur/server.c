@@ -104,8 +104,8 @@ static void app(void)
 
                Client c = {csock};
                strncpy(c.name, buffer, BUF_SIZE - 1);
-
                clients[actual] = c;
+               clients[actual].etat = Initialisation;
                write_client(csock, "Veuillez choisir:\n 1. Jouer avec un autre client\n 2. Quitter\n");
                actual++;
             }
@@ -115,12 +115,15 @@ static void app(void)
       {
          int i = 0;
          for (i = 0; i < actual; i++)
-         { // envoyyer une noficication a tous les clients en attente
-            printf("on es arrive ici");
+         {
+            if (clients[i].etat == Enattente)
+            {
+               write_client(clients[i].sock, "Un nouveau client s'est connecter\n Tapez 1 pour jouer avec un autre client\n");
+            }
             /* a client is talking */
             if (FD_ISSET(clients[i].sock, &rdfs))
             {
-               printf("on es arrive ");
+               printf("test2 ");
                fflush(stdout);
                Client client = clients[i];
 
@@ -128,31 +131,41 @@ static void app(void)
                /* client disconnected */
                if (c == 0)
                {
-                  closesocket(clients[i].sock);
-                  remove_client(clients, i, &actual);
+
+                  deconnecterClient(clients, i, &actual);
                   strncpy(buffer, client.name, BUF_SIZE - 1);
                   strncat(buffer, " disconnected !", BUF_SIZE - strlen(buffer) - 1);
                   send_message_to_all_clients(clients, client, actual, buffer, 1);
                }
+
                else
                {
                   printf("on es arrive %s", buffer);
                   fflush(stdout);
-                  /* if (clients[i].etat == Enatttente)
 
-                   {
-                      Writw_client(clients[i].sock, "Veuillez choisir:\n 1. Jouer avec un autre client\n 2. Quitter\n");
+                  if (clients[i].etat == Initialisation)
 
-                      if (strcmp(buffer, "1") == 0)
-                      {
-                         write_client(clients[i].sock, "Vous avez choisi de jouer avec un autre client\nVoici la liste des clients connectés:\n");
-                      }
+                  {
 
-                      if (strcmp(buffer, "2") == 0)
-                      {
-                         remove_client(clients, i, &actual);
-                      }
-                   }*/
+                     if (strcmp(buffer, "1") == 0)
+                     {
+                        write_client(clients[i].sock, "Vous avez choisi de jouer avec un autre client\nVoici la liste des clients connectés:\n");
+                        listClients(clients, i, actual);
+                     }
+                     if (strcmp(buffer, "2") == 0)
+                     {
+                        write_client(clients[i].sock, "Vous avez choisi de quitter\n");
+                        deconnecterClient(clients, i, &actual);
+                     }
+                  }
+                  else if (clients[i].etat == Enattente)
+                  {
+                     if (strcmp(buffer, "1") == 0)
+                     {
+                        write_client(clients[i].sock, "Vous avez choisi de jouer avec un autre client\nVoici la liste des clients connectés:\n");
+                        listClients(clients, i, actual);
+                     }
+                  }
                }
                break;
             }
@@ -168,7 +181,7 @@ static void clear_clients(Client *clients, int actual)
    int i = 0;
    for (i = 0; i < actual; i++)
    {
-      closesocket(clients[i].sock);
+      deconnecterServeur(clients, i, &actual);
    }
 }
 
@@ -337,7 +350,7 @@ static int listClients(Client clients[], int index, int actual)
    {
       if (actual == 1)
       {
-
+         clients[index].etat = Enattente;
          write_client(clients[index].sock, "Aucun autre client connecté\n");
          return 0;
       }
@@ -351,5 +364,74 @@ static int listClients(Client clients[], int index, int actual)
          write_client(clients[index].sock, message);
       }
    }
+   return 1;
+}
+
+static int deconnecterClient(Client *clients, int i, int *actual)
+{
+
+   FILE *fichier = fopen("./data/clients.csv", "r+");
+   FILE *tempFile = fopen("./data/tempD.csv", "w");
+   if (!fichier)
+   {
+      perror("Erreur d'ouverture des fichiers");
+      return -1;
+   }
+   char line[256];
+   char name_used[256];
+   snprintf(name_used, sizeof(name_used), "%s,", clients[i].name);
+   while (fgets(line, sizeof(line), fichier))
+   {
+      if (strstr(line, name_used))
+      {
+         fprintf(tempFile, "%s, -\n", clients[i].name);
+      }
+      else
+      {
+         fputs(line, tempFile);
+      }
+   }
+   fclose(fichier);
+   fclose(tempFile);
+   rename("./data/tempD.csv", "./data/clients.csv");
+
+   printf("Client %s déconnecté\n", clients[i].name);
+   fflush(stdout);
+   remove_client(clients, i, actual);
+   closesocket(clients[i].sock);
+   return 1;
+}
+static int deconnecterServeur(Client *clients, int i, int *actual)
+{
+
+   FILE *fichier = fopen("./data/clients.csv", "r+");
+   FILE *tempFile = fopen("./data/tempD.csv", "w");
+   if (!fichier)
+   {
+      perror("Erreur d'ouverture des fichiers");
+      return -1;
+   }
+   char line[256];
+   char name_used[256];
+   snprintf(name_used, sizeof(name_used), "%s,", clients[i].name);
+   while (fgets(line, sizeof(line), fichier))
+   {
+      if (strstr(line, name_used))
+      {
+         fprintf(tempFile, "%s, -\n", clients[i].name);
+      }
+      else
+      {
+         fputs(line, tempFile);
+      }
+   }
+   fclose(fichier);
+   fclose(tempFile);
+   rename("./data/tempD.csv", "./data/clients.csv");
+
+   printf("Client %s déconnecté\n", clients[i].name);
+   fflush(stdout);
+
+   closesocket(clients[i].sock);
    return 1;
 }
