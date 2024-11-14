@@ -107,6 +107,7 @@ static void app(void)
                strncpy(c.name, buffer, BUF_SIZE - 1);
                clients[actual] = c;
                clients[actual].etat = Initialisation;
+               clients[actual].etatjeu = Rien;
                write_client(csock, "Veuillez choisir:\n 1. Jouer avec un autre client\n 2. Quitter\n");
                actual++;
             }
@@ -119,13 +120,12 @@ static void app(void)
          {
             if (clients[i].etat == Enattente)
             {
-               write_client(clients[i].sock, "Un nouveau client s'est connecter\n Tapez 1 pour jouer avec un autre client\n");
+               write_client(clients[i].sock, "Un nouveau joueur s'est connecter\n Tapez 1 pour jouer avec un autre joeur\n");
             }
             /* a client is talking */
             if (FD_ISSET(clients[i].sock, &rdfs))
             {
-               printf("test2 ");
-               fflush(stdout);
+
                Client client = clients[i];
 
                int c = read_client(clients[i].sock, buffer);
@@ -141,8 +141,6 @@ static void app(void)
 
                else
                {
-                  printf("on es arrive %s", buffer);
-                  fflush(stdout);
 
                   if (clients[i].etat == Initialisation)
 
@@ -150,8 +148,8 @@ static void app(void)
 
                      if (strcmp(buffer, "1") == 0)
                      {
-                        write_client(clients[i].sock, "Vous avez choisi de jouer avec un autre client\nVoici la liste des clients connectés:\n");
-                        listClients(clients, i, actual);
+                        write_client(clients[i].sock, "Vous avez choisi de jouer avec un autre joueur\nVoici la liste des clients connectés:\n");
+                        listClients(clients, i, &actual);
                      }
                      if (strcmp(buffer, "2") == 0)
                      {
@@ -163,9 +161,57 @@ static void app(void)
                   {
                      if (strcmp(buffer, "1") == 0)
                      {
-                        write_client(clients[i].sock, "Vous avez choisi de jouer avec un autre client\nVoici la liste des clients connectés:\n");
-                        listClients(clients, i, actual);
+                        write_client(clients[i].sock, "Vous avez choisi de jouer avec un autre joeur\nVoici la liste des clients connectés:\n");
+                        listClients(clients, i, &actual);
                      }
+                  }
+                  else if (clients[i].etat == DemandeDePartie)
+                  {
+                     int opponent_index = atoi(buffer);
+                     if (opponent_index < 0 || opponent_index >= actual)
+                     {
+                        write_client(clients[i].sock, "Numéro de joueur invalide\n");
+                     }
+                     else
+                     {
+                        if (clients[opponent_index].etatjeu == Rien)
+                        {
+                           char message[256];
+                           snprintf(message, sizeof(message), "Demande de partie de %s\nVeuillez répondre par Y ou N\n", clients[i].name);
+                           write_client(clients[opponent_index].sock, message);
+                           clients[opponent_index].etat = EnvoieReponse;
+                           clients[opponent_index].opponent = &clients[i];
+                        }
+                        else
+                        {
+                           write_client(clients[i].sock, "Le joueur choisi est déjà en partie\nVeuillez chosir un autre joueur\n");
+                           listClients(clients, i, &actual);
+                        }
+                     }
+                  }
+                  else if (clients[i].etat == EnvoieReponse)
+                  {
+                     if (strcmp(buffer, "Y") == 0)
+                     {
+                        write_client(clients[i].sock, "Vous avez accepté la demande de partie\n");
+                        write_client(clients[i].opponent->sock, "Votre demande de partie a été acceptée\n");
+                        start_game(&clients[i], clients[i].opponent);
+                     }
+                     else if (strcmp(buffer, "N") == 0)
+                     {
+                        write_client(clients[i].sock, "Vous avez refusé la demande de partie\n");
+                        write_client(clients[i].opponent->sock, "Votre demande de partie a été refusée\n");
+                        clients[i].etat = Initialisation;
+                        clients[i].opponent->etat = Initialisation;
+                     }
+                     else
+                     {
+                        write_client(clients[i].sock, "Veuillez répondre par Y ou N\n");
+                     }
+                  }
+                  else
+                  {
+                     parse_command(&clients[i], buffer, clients, actual);
                   }
                }
                break;
@@ -341,18 +387,18 @@ static int inscrireClient(const char *name)
    fclose(tempFile);
    rename("./data/temp.csv", "./data/clients.csv");
 
-   printf("Client %s inscrit et connecté\n", name);
+   printf("Joueur %s inscrit et connecté\n", name);
    fflush(stdout);
    return 1;
 }
-static int listClients(Client clients[], int index, int actual)
+static int listClients(Client clients[], int index, int *actual)
 {
-   for (int i = 0; i < actual; i++)
+   for (int i = 0; i < *actual; i++)
    {
-      if (actual == 1)
+      if (*actual == 1)
       {
          clients[index].etat = Enattente;
-         write_client(clients[index].sock, "Aucun autre client connecté\n");
+         write_client(clients[index].sock, "Aucun autre joueur connecté\n");
          return 0;
       }
       if (i != index)
@@ -361,10 +407,12 @@ static int listClients(Client clients[], int index, int actual)
          char message[256];
          printf("Client %s\n", clients[i].name);
          fflush(stdout);
-         snprintf(message, sizeof(message), "%s\n", clients[i].name);
+         snprintf(message, sizeof(message), "%d: %s\n", i, clients[i].name);
          write_client(clients[index].sock, message);
       }
    }
+   clients[index].etat = DemandeDePartie;
+   write_client(clients[index].sock, "Veuillez choisir le numéro du joueur \n");
    return 1;
 }
 
@@ -396,10 +444,11 @@ static int deconnecterClient(Client *clients, int i, int *actual)
    fclose(tempFile);
    rename("./data/tempD.csv", "./data/clients.csv");
 
-   printf("Client %s déconnecté\n", clients[i].name);
+   printf("Joueur %s déconnecté\n", clients[i].name);
    fflush(stdout);
-   remove_client(clients, i, actual);
    closesocket(clients[i].sock);
+   remove_client(clients, i, actual);
+
    return 1;
 }
 static int deconnecterServeur(Client *clients, int i, int *actual)
@@ -430,7 +479,7 @@ static int deconnecterServeur(Client *clients, int i, int *actual)
    fclose(tempFile);
    rename("./data/tempD.csv", "./data/clients.csv");
 
-   printf("Client %s déconnecté\n", clients[i].name);
+   printf("Joueur %s déconnecté\n", clients[i].name);
    fflush(stdout);
 
    closesocket(clients[i].sock);

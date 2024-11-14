@@ -4,15 +4,25 @@
 #include "server.h"
 enum Etat
 {
-   EnPartie,
    Enattente,
-   Initialisation
+   Initialisation,
+   EnvoieReponse,
+   DemandeDePartie
 };
-typedef struct
+enum Etatjeu
+{
+   EnCours,
+   Rien
+};
+typedef struct Client Client; // Déclaration préalable de la structure Client
+
+struct Client
 {
    SOCKET sock;
    char name[BUF_SIZE];
    enum Etat etat;
-} Client;
+   enum Etatjeu etatjeu;
+   Client *opponent; // Pointeur vers un autre Client
+};
 
 #endif /* guard */
