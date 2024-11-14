@@ -469,9 +469,6 @@ void parse_command(Client *client, const char *command, Client *clients, int act
    }
 }
 
-#include <string.h>
-#include "client.h"
-
 Client *find_client_by_name(Client *clients, int actual, const char *name)
 {
    for (int i = 0; i < actual; i++)
