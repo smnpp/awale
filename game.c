@@ -7,8 +7,15 @@ void init_game(Game *game, Client *client1, Client *client2)
 {
     game->player1 = client1;
     game->player2 = client2;
-    game->current_turn = 0; // On commence avec le tour du Joueur 1
-    game->game_over = 0;
+    int tour = rand() % 2 + 1;
+    if (tour == 0)
+    {
+        game->current_turn = client1;
+    }
+    else
+    {
+        game->current_turn = client2;
+    }
     Client *current_client;
     initialiserPlateau(&game->jeu); // Configure le plateau de jeu
 
@@ -19,17 +26,22 @@ void init_game(Game *game, Client *client1, Client *client2)
         generate_board_state(game, buffer);
         write_client(client1->sock, buffer);
         write_client(client2->sock, buffer);
+
         current_client = game->current_turn;
+
         write_client(current_client->sock, "C'est votre tour !\n");
+        write_client(current_client->sock, "Choisissez un trou : ");
         if (current_client == client1)
         {
+            write_client(client1->sock, "Choisissez un trou entre 0 et 5.\n");
             write_client(client2->sock, "C'est le tour de l'adversaire.\n");
         }
         else
         {
             write_client(client1->sock, "C'est le tour de l'adversaire.\n");
+            write_client(client2->sock, "Choisissez un trou entre 6 et 11.\n");
         }
-        write_client(current_client->sock, "Choisissez un trou : ");
+
         if (read_client(current_client->sock, buffer) > 0)
         {
             int move = atoi(buffer);
@@ -142,19 +154,18 @@ Game *create_game(Client *client1, Client *client2)
 // Génère l'état du plateau sous forme de chaîne de caractères
 void generate_board_state(Game *game, char *buffer)
 {
-    snprintf(buffer, BUF_SIZE, "Plateau actuel:\nJoueur 1 (votre côté): ");
+    snprintf(buffer, BUF_SIZE, "Plateau actuel:\n==============================\nJoueur 2 : ");
+    for (int i = TROUS - 1; i >= TROUS / 2; i--)
+    {
+        snprintf(buffer + strlen(buffer), BUF_SIZE - strlen(buffer), "%d ", game->jeu.trous[i]);
+    }
+
+    snprintf(buffer + strlen(buffer), BUF_SIZE, "\nJoueur 1 : ");
     for (int i = 0; i < TROUS / 2; i++)
     {
         snprintf(buffer + strlen(buffer), BUF_SIZE - strlen(buffer), "%d ", game->jeu.trous[i]);
     }
-
-    snprintf(buffer + strlen(buffer), BUF_SIZE - strlen(buffer), "\nJoueur 2 (opposé): ");
-    for (int i = TROUS / 2; i < TROUS; i++)
-    {
-        snprintf(buffer + strlen(buffer), BUF_SIZE - strlen(buffer), "%d ", game->jeu.trous[i]);
-    }
-
     snprintf(buffer + strlen(buffer), BUF_SIZE - strlen(buffer),
-             "\nScores - Joueur 1: %d | Joueur 2: %d\n",
+             "\n==============================\nScores - Joueur 1: %d | Joueur 2: %d\n",
              game->jeu.scoreJoueur1, game->jeu.scoreJoueur2);
 }

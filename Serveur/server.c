@@ -492,6 +492,7 @@ void start_game(Client *client1, Client *client2)
    if (game)
    {
       init_game(game, client1, client2);
+      /*
       game->current_turn = (rand() % 2 == 0) ? client1 : client2;
       write_client(game->current_turn->sock, "C'est votre tour !\n");
 
@@ -529,7 +530,8 @@ void start_game(Client *client1, Client *client2)
       }
 
       end_game(game);
-      free(game); // Libérer la mémoire après la fin du jeu
+      */
+      // free(game); // Libérer la mémoire après la fin du jeu
    }
    else
    {
