@@ -36,20 +36,20 @@ typedef struct in_addr IN_ADDR;
 #include "client.h"
 #include "../game.h"
 
-static void init(void);
-static void end(void);
-static void app(void);
-static int init_connection(void);
-static void end_connection(int sock);
+// static void init(void);
+// static void end(void);
+// static void app(void);
+// static int init_connection(void);
+// static void end_connection(int sock);
 int read_client(SOCKET sock, char *buffer);
 void write_client(SOCKET sock, const char *buffer);
-static void send_message_to_all_clients(Client *clients, Client client, int actual, const char *buffer, char from_server);
-static void remove_client(Client *clients, int to_remove, int *actual);
-static void clear_clients(Client *clients, int actual);
-static int inscrireClient(const char *name);
-static int listClients(Client clients[], int index, int *actual);
-static int deconnecterClient(Client *clients, int to_remove, int *actual);
-static int deconnecterServeur(Client *clients, int to_remove, int *actual);
+// static void send_message_to_all_clients(Client *clients, Client client, int actual, const char *buffer, char from_server);
+// static void remove_client(Client *clients, int to_remove, int *actual);
+// static void clear_clients(Client *clients, int actual);
+// static int inscrireClient(const char *name);
+// static int listClients(Client clients[], int index, int *actual);
+// static int deconnecterClient(Client *clients, int to_remove, int *actual);
+// static int deconnecterServeur(Client *clients, int to_remove, int *actual);
 void start_game(Client *client1, Client *client2);
 void parse_command(Client *client, const char *command, Client *clients, int actual);
 Client *find_client_by_name(Client *clients, int actual, const char *name);

@@ -9,10 +9,10 @@ enum Etat
    EnvoieReponse,
    DemandeDePartie
 };
-enum Etatjeu
+enum EtatJeu
 {
-   EnCours,
-   Rien
+   EnJeu,
+   Libre
 };
 typedef struct Client Client; // Déclaration préalable de la structure Client
 
@@ -21,7 +21,7 @@ struct Client
    SOCKET sock;
    char name[BUF_SIZE];
    enum Etat etat;
-   enum Etatjeu etatjeu;
+   enum EtatJeu etatjeu;
    Client *opponent; // Pointeur vers un autre Client
 };
 

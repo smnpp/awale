@@ -15,7 +15,7 @@ typedef struct Game
     Awale jeu; // Plateau de jeu utilisé par les fonctions de awale.c
 } Game;
 
-void init_game(Game *game, Client *client1, Client *client2);
+void play_game(Game *game, Client *client1, Client *client2);
 int process_move(Game *game, Client *client, int move);
 void end_game(Game *game);
 void send_update_to_players(Game *game);

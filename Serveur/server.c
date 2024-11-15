@@ -7,7 +7,18 @@
 #include "client.h"
 #include "../game.h"
 
-static void init(void)
+// DECLARATION DES FONCTIONS UTILISEES SEULEMENT DANS CE FICHIER
+int init_connection(void);
+int inscrireClient(const char *name);
+int deconnecterClient(Client *clients, int i, int *actual);
+void send_message_to_all_clients(Client *clients, Client sender, int actual, const char *buffer, char from_server);
+int listClients(Client clients[], int index, int *actual);
+void clear_clients(Client *clients, int actual);
+void remove_client(Client *clients, int to_remove, int *actual);
+int deconnecterServeur(Client *clients, int i, int *actual);
+void end_connection(int sock);
+
+void init(void)
 {
 #ifdef WIN32
    WSADATA wsa;
@@ -20,14 +31,14 @@ static void init(void)
 #endif
 }
 
-static void end(void)
+void end(void)
 {
 #ifdef WIN32
    WSACleanup();
 #endif
 }
 
-static void app(void)
+void app(void)
 {
    SOCKET sock = init_connection();
    char buffer[BUF_SIZE];
@@ -87,13 +98,13 @@ static void app(void)
 
             if (result == 2)
             {
-               write_client(csock, "Vous êtes déjà connecté\n");
+               write_client(csock, "Vous êtes déjà connecté");
                closesocket(csock);
                continue;
             }
             else if (result == -1) // verifier le -1
             {
-               write_client(csock, "Erreur lors de l'inscription\n");
+               write_client(csock, "Erreur lors de l'inscription");
                closesocket(csock);
                continue;
             }
@@ -107,8 +118,8 @@ static void app(void)
                strncpy(c.name, buffer, BUF_SIZE - 1);
                clients[actual] = c;
                clients[actual].etat = Initialisation;
-               clients[actual].etatjeu = Rien;
-               write_client(csock, "Veuillez choisir:\n 1. Jouer avec un autre client\n 2. Quitter\n");
+               clients[actual].etatjeu = Libre;
+               write_client(csock, "Bienvenue dans le jeu Awale !\nVeuillez choisir une option :\n1. Jouer contre un adversaire en ligne\n2. Quitter le jeu");
                actual++;
             }
          }
@@ -120,7 +131,7 @@ static void app(void)
          {
             if (clients[i].etat == Enattente)
             {
-               write_client(clients[i].sock, "Un nouveau joueur s'est connecter\n Tapez 1 pour jouer avec un autre joeur\n");
+               write_client(clients[i].sock, "\nUn nouveau joueur s'est connecté\n Tapez 1 pour jouer avec un autre joeur");
             }
             /* a client is talking */
             if (FD_ISSET(clients[i].sock, &rdfs))
@@ -148,12 +159,12 @@ static void app(void)
 
                      if (strcmp(buffer, "1") == 0)
                      {
-                        write_client(clients[i].sock, "Vous avez choisi de jouer avec un autre joueur\nVoici la liste des clients connectés:\n");
+                        write_client(clients[i].sock, "\nVous avez choisi de jouer avec un autre joueur.\nVoici la liste des clients connectés:");
                         listClients(clients, i, &actual);
                      }
                      if (strcmp(buffer, "2") == 0)
                      {
-                        write_client(clients[i].sock, "Vous avez choisi de quitter\n");
+                        write_client(clients[i].sock, "\nVous avez choisi de quitter");
                         deconnecterClient(clients, i, &actual);
                      }
                   }
@@ -161,7 +172,7 @@ static void app(void)
                   {
                      if (strcmp(buffer, "1") == 0)
                      {
-                        write_client(clients[i].sock, "Vous avez choisi de jouer avec un autre joeur\nVoici la liste des clients connectés:\n");
+                        write_client(clients[i].sock, "\nVous avez choisi de jouer avec un autre joueur.\nVoici la liste des clients connectés:");
                         listClients(clients, i, &actual);
                      }
                   }
@@ -170,21 +181,21 @@ static void app(void)
                      int opponent_index = atoi(buffer);
                      if (opponent_index < 0 || opponent_index >= actual)
                      {
-                        write_client(clients[i].sock, "Numéro de joueur invalide\n");
+                        write_client(clients[i].sock, "\nNuméro de joueur invalide");
                      }
                      else
                      {
-                        if (clients[opponent_index].etatjeu == Rien)
+                        if (clients[opponent_index].etatjeu == Libre)
                         {
                            char message[256];
-                           snprintf(message, sizeof(message), "Demande de partie de %s\nVeuillez répondre par Y ou N\n", clients[i].name);
+                           snprintf(message, sizeof(message), "\nDemande de partie de %s\nVeuillez répondre par Y ou N", clients[i].name);
                            write_client(clients[opponent_index].sock, message);
                            clients[opponent_index].etat = EnvoieReponse;
                            clients[opponent_index].opponent = &clients[i];
                         }
                         else
                         {
-                           write_client(clients[i].sock, "Le joueur choisi est déjà en partie\nVeuillez chosir un autre joueur\n");
+                           write_client(clients[i].sock, "\nLe joueur choisi est déjà en partie\nVeuillez chosir un autre joueur");
                            listClients(clients, i, &actual);
                         }
                      }
@@ -193,20 +204,20 @@ static void app(void)
                   {
                      if (strcmp(buffer, "Y") == 0)
                      {
-                        write_client(clients[i].sock, "Vous avez accepté la demande de partie\n");
-                        write_client(clients[i].opponent->sock, "Votre demande de partie a été acceptée\n");
+                        write_client(clients[i].sock, "\nVous avez accepté la demande de partie\n");
+                        write_client(clients[i].opponent->sock, "\nVotre demande de partie a été acceptée\n");
                         start_game(&clients[i], clients[i].opponent);
                      }
                      else if (strcmp(buffer, "N") == 0)
                      {
-                        write_client(clients[i].sock, "Vous avez refusé la demande de partie\n");
-                        write_client(clients[i].opponent->sock, "Votre demande de partie a été refusée\n");
+                        write_client(clients[i].sock, "\nVous avez refusé la demande de partie\n");
+                        write_client(clients[i].opponent->sock, "\nVotre demande de partie a été refusée\n");
                         clients[i].etat = Initialisation;
                         clients[i].opponent->etat = Initialisation;
                      }
                      else
                      {
-                        write_client(clients[i].sock, "Veuillez répondre par Y ou N\n");
+                        write_client(clients[i].sock, "\nVeuillez répondre par Y ou N");
                      }
                   }
                   else
@@ -223,7 +234,7 @@ static void app(void)
    end_connection(sock);
 }
 
-static void clear_clients(Client *clients, int actual)
+void clear_clients(Client *clients, int actual)
 {
    int i = 0;
    for (i = 0; i < actual; i++)
@@ -232,7 +243,7 @@ static void clear_clients(Client *clients, int actual)
    }
 }
 
-static void remove_client(Client *clients, int to_remove, int *actual)
+void remove_client(Client *clients, int to_remove, int *actual)
 {
    /* we remove the client in the array */
    memmove(clients + to_remove, clients + to_remove + 1, (*actual - to_remove - 1) * sizeof(Client));
@@ -240,7 +251,7 @@ static void remove_client(Client *clients, int to_remove, int *actual)
    (*actual)--;
 }
 
-static void send_message_to_all_clients(Client *clients, Client sender, int actual, const char *buffer, char from_server)
+void send_message_to_all_clients(Client *clients, Client sender, int actual, const char *buffer, char from_server)
 {
    int i = 0;
    char message[BUF_SIZE];
@@ -261,7 +272,7 @@ static void send_message_to_all_clients(Client *clients, Client sender, int actu
    }
 }
 
-static int init_connection(void)
+int init_connection(void)
 {
    SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
    SOCKADDR_IN sin = {0};
@@ -291,7 +302,7 @@ static int init_connection(void)
    return sock;
 }
 
-static void end_connection(int sock)
+void end_connection(int sock)
 {
    closesocket(sock);
 }
@@ -332,7 +343,7 @@ int main(int argc, char **argv)
    return EXIT_SUCCESS;
 }
 
-static int inscrireClient(const char *name)
+int inscrireClient(const char *name)
 {
    printf("Inscription du client %s\n", name);
    fflush(stdout);
@@ -391,32 +402,44 @@ static int inscrireClient(const char *name)
    fflush(stdout);
    return 1;
 }
-static int listClients(Client clients[], int index, int *actual)
+
+int listClients(Client clients[], int index, int *actual)
 {
+   write_client(clients[index].sock, "==============================");
+   write_client(clients[index].sock, "\nListe des joueurs connectés :");
+
+   int found = 0;
    for (int i = 0; i < *actual; i++)
    {
-      if (*actual == 1)
-      {
-         clients[index].etat = Enattente;
-         write_client(clients[index].sock, "Aucun autre joueur connecté\n");
-         return 0;
-      }
       if (i != index)
       {
-
          char message[256];
-         printf("Client %s\n", clients[i].name);
-         fflush(stdout);
-         snprintf(message, sizeof(message), "%d: %s\n", i, clients[i].name);
+         if (clients[i].etatjeu == EnJeu)
+         {
+            snprintf(message, sizeof(message), "\n%d: %s - En partie", i, clients[i].name);
+         }
+         else
+         {
+            snprintf(message, sizeof(message), "\n%d: %s - Disponible", i, clients[i].name);
+         }
          write_client(clients[index].sock, message);
+         found = 1;
       }
    }
+
+   if (!found)
+   {
+      write_client(clients[index].sock, "\nAucun autre joueur n'est connecté.");
+   }
+
+   write_client(clients[index].sock, "\n==============================");
+   write_client(clients[index].sock, "\nVeuillez choisir un numéro de joueur :");
+
    clients[index].etat = DemandeDePartie;
-   write_client(clients[index].sock, "Veuillez choisir le numéro du joueur \n");
    return 1;
 }
 
-static int deconnecterClient(Client *clients, int i, int *actual)
+int deconnecterClient(Client *clients, int i, int *actual)
 {
 
    FILE *fichier = fopen("./data/clients.csv", "r+");
@@ -451,7 +474,8 @@ static int deconnecterClient(Client *clients, int i, int *actual)
 
    return 1;
 }
-static int deconnecterServeur(Client *clients, int i, int *actual)
+
+int deconnecterServeur(Client *clients, int i, int *actual)
 {
 
    FILE *fichier = fopen("./data/clients.csv", "r+");
@@ -491,7 +515,9 @@ void start_game(Client *client1, Client *client2)
    Game *game = create_game(client1, client2);
    if (game)
    {
-      init_game(game, client1, client2);
+      client1->etatjeu = EnJeu;
+      client2->etatjeu = EnJeu;
+      play_game(game, client1, client2);
    }
    else
    {
