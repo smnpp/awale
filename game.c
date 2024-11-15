@@ -35,21 +35,25 @@ void init_game(Game *game, Client *client1, Client *client2)
         write_client(current_client->sock, "Choisissez un trou : ");
         if (current_client == client1)
         {
-            write_client(client1->sock, "Choisissez un trou entre 0 et 5.\n");
+            write_client(client1->sock, "Choisissez un trou entre 1 et 6.\n");
             write_client(client2->sock, "C'est le tour de l'adversaire.\n");
         }
         else
         {
             write_client(client1->sock, "C'est le tour de l'adversaire.\n");
-            write_client(client2->sock, "Choisissez un trou entre 0 et 5.\n");
+            write_client(client2->sock, "Choisissez un trou entre 1 et 6.\n");
         }
 
         if (read_client(current_client->sock, buffer) > 0)
         {
             int move = atoi(buffer);
+            if (current_client == client1)
+            {
+                move -= 1;
+            }
             if (current_client == client2)
             {
-                move += 6;
+                move += 5;
             }
             if (process_move(game, current_client, move))
             {

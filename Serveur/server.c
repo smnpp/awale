@@ -492,46 +492,6 @@ void start_game(Client *client1, Client *client2)
    if (game)
    {
       init_game(game, client1, client2);
-      /*
-      game->current_turn = (rand() % 2 == 0) ? client1 : client2;
-      write_client(game->current_turn->sock, "C'est votre tour !\n");
-
-      while (!game->game_over)
-      {
-         char board_state[BUF_SIZE];
-         generate_board_state(game, board_state);
-
-         // Envoyer le plateau aux deux clients
-         write_client(client1->sock, board_state);
-         write_client(client2->sock, board_state);
-
-         // Tour du joueur actuel
-         char buffer[BUF_SIZE];
-         write_client(game->current_turn->sock, "Choisissez un trou : ");
-         if (read_client(game->current_turn->sock, buffer) > 0)
-         {
-            int move = atoi(buffer);
-            if (process_move(game, game->current_turn, move))
-            {
-               game->current_turn = (game->current_turn == client1) ? client2 : client1;
-            }
-            else
-            {
-               write_client(game->current_turn->sock, "Coup invalide, essayez à nouveau.\n");
-            }
-         }
-         else
-         {
-            // Si un joueur se déconnecte
-            game->game_over = 1;
-            write_client(client1->sock, "L'autre joueur a quitté la partie.\n");
-            write_client(client2->sock, "L'autre joueur a quitté la partie.\n");
-         }
-      }
-
-      end_game(game);
-      */
-      // free(game); // Libérer la mémoire après la fin du jeu
    }
    else
    {
