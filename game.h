@@ -19,7 +19,7 @@ void init_game(Game *game, Client *client1, Client *client2);
 int process_move(Game *game, Client *client, int move);
 void end_game(Game *game);
 void send_update_to_players(Game *game);
-void generate_board_state(Game *game, char *buffer);
+void generate_board_state(Game *game, char *buffer_client1, char *buffer_client2);
 Game *create_game(Client *client1, Client *client2);
 
 #endif /* GAME_H */
