@@ -1,22 +1,21 @@
 #include "game.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include <string.h>
 
 void play_game(Game *game, Client *client1, Client *client2)
 {
     game->player1 = client1;
     game->player2 = client2;
-
-    // Déterminer qui commence aléatoirement
     game->current_turn = (rand() % 2 == 0) ? client1 : client2;
 
-    initialiserPlateau(&game->jeu); // Initialisation du plateau
+    initialiserPlateau(&game->jeu);
 
     char buffer[BUF_SIZE];
     char buffer_player1[BUF_SIZE];
     char buffer_player2[BUF_SIZE];
-
+    char moves[BUF_SIZE] = ""; // Suivi des coups
     Client *current_client;
 
     while (!game->game_over)
@@ -28,45 +27,57 @@ void play_game(Game *game, Client *client1, Client *client2)
         write_client(client1->sock, buffer_player1);
         write_client(client2->sock, buffer_player2);
 
-        // Affichage de l'invite pour le joueur actuel
+        // Indiquer le tour actuel
         write_client(current_client->sock, "C'est votre tour !");
         write_client(current_client->sock, "Choisissez un trou entre 1 et 6 :");
 
-        // Lire le choix du joueur
+        if (current_client == client1)
+        {
+            write_client(client2->sock, "C'est le tour de l'adversaire.\n");
+        }
+        else
+        {
+            write_client(client1->sock, "C'est le tour de l'adversaire.\n");
+        }
+
+        // Lecture du coup
         if (read_client(current_client->sock, buffer) > 0)
         {
             int move = atoi(buffer);
             if (current_client == client1)
             {
-                move -= 1; // Ajuster pour l'index
+                move -= 1; // Ajuster l'index
             }
             else if (current_client == client2)
             {
-                move += 5; // Ajuster pour l'index
+                move += 5; // Ajuster l'index
             }
 
-            // Traiter le coup joué
-            if (process_move(game, current_client, move))
+            // Valider le coup
+            if (process_move(game, current_client, move, moves))
             {
-                // Si le coup est valide, alterner les joueurs
+                // Ajouter le coup au suivi
+                char move_str[16];
+                snprintf(move_str, sizeof(move_str), "%d ", move);
+                strncat(moves, move_str, sizeof(moves) - strlen(moves) - 1);
+
+                // Alterner les joueurs
                 game->current_turn = (current_client == client1) ? client2 : client1;
             }
             else
             {
-                // Si le coup est invalide
-                write_client(current_client->sock, "Coup invalide, essayez à nouveau.\n");
+                write_client(current_client->sock, "Coup invalide, essayez à nouveau.");
             }
         }
         else
         {
-            // Si un joueur se déconnecte
             game->game_over = 1;
             snprintf(buffer, BUF_SIZE, "L'autre joueur a quitté la partie.");
             write_client(client1->sock, buffer);
             write_client(client2->sock, buffer);
         }
 
-        // Vérifier si le jeu est terminé
+        // Vérification de fin de partie
         if (partieTerminee(&game->jeu, buffer))
         {
             game->game_over = 1;
@@ -77,46 +88,45 @@ void play_game(Game *game, Client *client1, Client *client2)
             write_client(client2->sock, buffer);
         }
     }
+
+    // Déterminer le gagnant
+    const char *winner = (game->jeu.scoreJoueur1 > game->jeu.scoreJoueur2)
+                             ? client1->name
+                         : (game->jeu.scoreJoueur1 < game->jeu.scoreJoueur2)
+                             ? client2->name
+                             : "Égalité";
+
+    // Enregistrer dans JSON
+    log_game_to_json(game, winner, moves);
 }
 
 // Gestion d'un coup joué par un joueur
-int process_move(Game *game, Client *client, int move)
+int process_move(Game *game, Client *client, int move, char *moves)
 {
     Awale *jeu = &game->jeu;
-    int index = move;
-
-    // Vérifie si le mouvement est valide pour le joueur actuel
     char buffer[BUF_SIZE];
+
+    // Vérifiez si le mouvement est valide
     if ((client == game->player1 && (move < 0 || move > 5 || jeu->trous[move] == 0)) ||
         (client == game->player2 && (move < 6 || move > 11 || jeu->trous[move] == 0)))
     {
-        return 0;
+        return 0; // Mouvement invalide
     }
 
-    distribuerEtCapturer(jeu, index, buffer);
-    write_client(client->sock, buffer);
+    // Ajout du coup dans l'historique
+    char move_str[16];
+    snprintf(move_str, sizeof(move_str), "%d ", move);
+    strncat(moves, move_str, sizeof(moves) - strlen(moves) - 1);
 
-    // Vérifie si le jeu est terminé
+    distribuerEtCapturer(jeu, move, buffer);
+
+    // Vérifiez si le jeu est terminé
     if (partieTerminee(jeu, buffer))
     {
         game->game_over = 1;
-        write_client(client->sock, buffer);
     }
 
     return 1; // Mouvement valide
-}
-
-// Fonction pour terminer la partie et envoyer le résultat aux joueurs
-void end_game(Game *game)
-{
-    char result[BUF_SIZE];
-    snprintf(result, BUF_SIZE, "END Game over! Scores: %s: %d, %s: %d \n",
-             game->player1->name, game->jeu.scoreJoueur1,
-             game->player2->name, game->jeu.scoreJoueur2);
-
-    write_client(game->player1->sock, result);
-    write_client(game->player2->sock, result);
-    game->game_over = 1;
 }
 
 // Fonction pour créer une nouvelle partie
@@ -152,7 +162,7 @@ void generate_board_state(Game *game, char *buffer_client1, char *buffer_client2
         snprintf(buffer_client1 + strlen(buffer_client1), BUF_SIZE - strlen(buffer_client1), "%d ", game->jeu.trous[i]);
     }
     snprintf(buffer_client1 + strlen(buffer_client1), BUF_SIZE - strlen(buffer_client1),
-             "\n==============================\nScores - Joueur 1: %d | Joueur 2: %d\n",
+             "\n==============================\nScores - Vous : %d | Adversaire: %d\n",
              game->jeu.scoreJoueur1, game->jeu.scoreJoueur2);
 
     snprintf(buffer_client2, BUF_SIZE, "Plateau actuel:\n==============================\nAdversaire : ");
@@ -167,6 +177,76 @@ void generate_board_state(Game *game, char *buffer_client1, char *buffer_client2
         snprintf(buffer_client2 + strlen(buffer_client2), BUF_SIZE - strlen(buffer_client2), "%d ", game->jeu.trous[i]);
     }
     snprintf(buffer_client2 + strlen(buffer_client2), BUF_SIZE - strlen(buffer_client2),
-             "\n==============================\nScores - Joueur 1: %d | Joueur 2: %d\n",
-             game->jeu.scoreJoueur1, game->jeu.scoreJoueur2);
+             "\n==============================\nScores - Vous : %d | Adversaire: %d\n",
+             game->jeu.scoreJoueur2, game->jeu.scoreJoueur1);
+}
+
+int get_next_game_id()
+{
+    FILE *id_file = fopen("data/game_id.txt", "r+"); // Ouvrir en lecture/écriture
+    int id = 1;
+
+    if (id_file == NULL)
+    {
+        // Si le fichier n'existe pas, créez-le et initialisez l'ID à 1
+        id_file = fopen("data/game_id.txt", "w");
+        if (id_file == NULL)
+        {
+            perror("Erreur d'ouverture du fichier d'ID");
+            return -1;
+        }
+        fprintf(id_file, "%d\n", id);
+    }
+    else
+    {
+        // Lire l'ID courant depuis le fichier
+        fscanf(id_file, "%d", &id);
+        rewind(id_file);                  // Revenir au début pour écraser la valeur
+        fprintf(id_file, "%d\n", id + 1); // Incrémenter et sauvegarder le nouvel ID
+    }
+
+    fclose(id_file);
+    return id;
+}
+
+void log_game_to_json(Game *game, const char *winner_name, const char *moves)
+{
+    int game_id = get_next_game_id();
+    if (game_id < 0)
+    {
+        return; // Gestion d'erreur si l'ID ne peut pas être généré
+    }
+
+    FILE *file = fopen("data/games.json", "a");
+    if (file == NULL)
+    {
+        perror("Erreur d'ouverture du fichier JSON");
+        return;
+    }
+
+    // Obtenir la date et l'heure actuelles
+    time_t now = time(NULL);
+    struct tm *t = localtime(&now);
+    char timestamp[64];
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", t);
+
+    // Ajouter les informations de la partie en format JSON
+    if (game_id > 1)
+    {
+        fprintf(file, ",\n{\n");
+    }
+    else
+    {
+        fprintf(file, "{\n");
+    }
+    fprintf(file, "  \"id\": %d,\n", game_id);
+    fprintf(file, "  \"date\": \"%s\",\n", timestamp);
+    fprintf(file, "  \"player1\": \"%s\",\n", game->player1->name);
+    fprintf(file, "  \"player2\": \"%s\",\n", game->player2->name);
+    fprintf(file, "  \"first_player\": \"%s\",\n", game->current_turn == game->player1 ? game->player1->name : game->player2->name);
+    fprintf(file, "  \"winner\": \"%s\",\n", winner_name);
+    fprintf(file, "  \"moves\": \"%s\"\n", moves);
+    fprintf(file, "}");
+
+    fclose(file);
 }

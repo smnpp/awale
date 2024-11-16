@@ -159,7 +159,7 @@ void app(void)
 
                      if (strcmp(buffer, "1") == 0)
                      {
-                        write_client(clients[i].sock, "\nVous avez choisi de jouer avec un autre joueur.\nVoici la liste des clients connectés:");
+                        write_client(clients[i].sock, "\nVous avez choisi de jouer avec un autre joueur.\nVoici la liste des clients connectés:\n");
                         listClients(clients, i, &actual);
                      }
                      if (strcmp(buffer, "2") == 0)
@@ -172,7 +172,7 @@ void app(void)
                   {
                      if (strcmp(buffer, "1") == 0)
                      {
-                        write_client(clients[i].sock, "\nVous avez choisi de jouer avec un autre joueur.\nVoici la liste des clients connectés:");
+                        write_client(clients[i].sock, "\nVous avez choisi de jouer avec un autre joueur.\nVoici la liste des clients connectés:\n");
                         listClients(clients, i, &actual);
                      }
                   }
@@ -406,7 +406,6 @@ int inscrireClient(const char *name)
 int listClients(Client clients[], int index, int *actual)
 {
    write_client(clients[index].sock, "==============================");
-   write_client(clients[index].sock, "\nListe des joueurs connectés :");
 
    int found = 0;
    for (int i = 0; i < *actual; i++)
