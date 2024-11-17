@@ -21,7 +21,7 @@ void afficherPlateau(const Awale *jeu, char *buffer);
 int distribuerEtCapturer(Awale *jeu, int trou, char *buffer);
 void capturerGraines(Awale *jeu, int dernierTrou);
 int distribuerGraines(Awale *jeu, int trou);
-void jouerTour(const Awale *jeu, char *buffer);
+void jouerTour(Awale *jeu, char *buffer);
 bool partieTerminee(const Awale *jeu, char *buffer);
 
 #endif // AWALE_H
