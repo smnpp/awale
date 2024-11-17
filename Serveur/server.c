@@ -188,7 +188,7 @@ void app(void)
                      }
                      else
                      {
-                        if (clients[opponent_index].etat != EnPartie || clients[opponent_index].etat != EnvoieReponse || clients[opponent_index].etat != DemandeDePartie)
+                        if ((clients[opponent_index].etat != EnPartie) && (clients[opponent_index].etat != EnvoieReponse))
                         {
                            char message[256];
                            snprintf(message, sizeof(message), "\nDemande de partie de %s\nVeuillez répondre par Y ou N", clients[i].name);
