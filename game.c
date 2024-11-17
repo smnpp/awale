@@ -4,102 +4,6 @@
 #include <time.h>
 #include <string.h>
 
-void play_game(Game *game, Client *client1, Client *client2)
-{
-    game->player1 = client1;
-    game->player2 = client2;
-    game->current_turn = (rand() % 2 == 0) ? client1 : client2;
-
-    initialiserPlateau(&game->jeu);
-
-    char buffer[BUF_SIZE];
-    char buffer_player1[BUF_SIZE];
-    char buffer_player2[BUF_SIZE];
-    char moves[BUF_SIZE] = ""; // Suivi des coups
-    Client *current_client;
-
-    while (!game->game_over)
-    {
-        current_client = game->current_turn;
-
-        // Générer l'affichage du plateau pour chaque joueur
-        generate_board_state(game, buffer_player1, buffer_player2);
-        write_client(client1->sock, buffer_player1);
-        write_client(client2->sock, buffer_player2);
-
-        // Indiquer le tour actuel
-        write_client(current_client->sock, "C'est votre tour !");
-        write_client(current_client->sock, "Choisissez un trou entre 1 et 6 :");
-
-        if (current_client == client1)
-        {
-            write_client(client2->sock, "C'est le tour de l'adversaire.\n");
-        }
-        else
-        {
-            write_client(client1->sock, "C'est le tour de l'adversaire.\n");
-        }
-
-        // Lecture du coup
-        if (read_client(current_client->sock, buffer) > 0)
-        {
-            int move = atoi(buffer);
-            if (current_client == client1)
-            {
-                move -= 1; // Ajuster l'index
-            }
-            else if (current_client == client2)
-            {
-                move += 5; // Ajuster l'index
-            }
-
-            // Valider le coup
-            if (process_move(game, current_client, move, moves))
-            {
-                // Ajouter le coup au suivi
-                char move_str[16];
-                snprintf(move_str, sizeof(move_str), "%d ", move);
-                strncat(moves, move_str, sizeof(moves) - strlen(moves) - 1);
-
-                // Alterner les joueurs
-                game->current_turn = (current_client == client1) ? client2 : client1;
-            }
-            else
-            {
-                write_client(current_client->sock, "Coup invalide, essayez à nouveau.");
-            }
-        }
-        else
-        {
-            game->game_over = 1;
-            snprintf(buffer, BUF_SIZE, "L'autre joueur a quitté la partie.");
-            write_client(client1->sock, buffer);
-            write_client(client2->sock, buffer);
-        }
-
-        // Vérification de fin de partie
-        if (partieTerminee(&game->jeu, buffer))
-        {
-            game->game_over = 1;
-            snprintf(buffer, BUF_SIZE, "Partie terminée ! Scores : %s: %d, %s: %d",
-                     client1->name, game->jeu.scoreJoueur1,
-                     client2->name, game->jeu.scoreJoueur2);
-            write_client(client1->sock, buffer);
-            write_client(client2->sock, buffer);
-        }
-    }
-
-    // Déterminer le gagnant
-    const char *winner = (game->jeu.scoreJoueur1 > game->jeu.scoreJoueur2)
-                             ? client1->name
-                         : (game->jeu.scoreJoueur1 < game->jeu.scoreJoueur2)
-                             ? client2->name
-                             : "Égalité";
-
-    // Enregistrer dans JSON
-    log_game_to_json(game, winner, moves);
-}
-
 // Gestion d'un coup joué par un joueur
 int process_move(Game *game, Client *client, int move, char *moves)
 {
@@ -124,6 +28,31 @@ int process_move(Game *game, Client *client, int move, char *moves)
     if (partieTerminee(jeu, buffer))
     {
         game->game_over = 1;
+
+        // Déterminer les scores
+        const char *winner = (jeu->scoreJoueur1 > jeu->scoreJoueur2) ? game->player1->name : (jeu->scoreJoueur1 < jeu->scoreJoueur2) ? game->player2->name
+                                                                                                                                     : "Égalité";
+
+        // Informer les joueurs
+        char result_message[BUF_SIZE];
+        snprintf(result_message, BUF_SIZE,
+                 "Partie terminée ! Scores finaux : %s: %d, %s: %d. Gagnant : %s\n",
+                 game->player1->name, jeu->scoreJoueur1,
+                 game->player2->name, jeu->scoreJoueur2, winner);
+
+        write_client(game->player1->sock, result_message);
+        write_client(game->player2->sock, result_message);
+
+        // Enregistrer dans un fichier si nécessaire (JSON par exemple)
+        log_game_to_json(game, winner, game->moves);
+
+        if (game->game_over)
+        {
+            end_game(game);
+
+            // Ne pas retourner à du code qui utilise `game` ou ses champs
+            return 1; // Fin du jeu
+        }
     }
 
     return 1; // Mouvement valide
@@ -270,8 +199,19 @@ void initialiserGame(Game *game, Client *client1, Client *client2)
     initialiserPlateau(&game->jeu);
 }
 
-void afficherplateau(Game *game)
+void display_board(Game *game)
 {
+    if (!game)
+    {
+        fprintf(stderr, "Erreur : tentative d'afficher un plateau pour un jeu inexistant.\n");
+        return;
+    }
+
+    if (game->game_over)
+    {
+        fprintf(stderr, "Erreur : tentative d'afficher un plateau pour une partie terminée.\n");
+        return;
+    }
 
     char buffer_player1[BUF_SIZE];
     char buffer_player2[BUF_SIZE];
@@ -296,6 +236,17 @@ void jouerCoup(Game *game, char *buffer)
 {
 
     int move = atoi(buffer);
+    if (!game)
+    {
+        fprintf(stderr, "Erreur : tentative d'accès à un jeu inexistant.\n");
+        return;
+    }
+
+    if (game->game_over)
+    {
+        fprintf(stderr, "Erreur : tentative de jouer un coup sur une partie terminée.\n");
+        return;
+    }
     if (game == NULL)
     {
         fprintf(stderr, "Erreur : game est NULL dans jouerCoup.\n");
@@ -319,13 +270,13 @@ void jouerCoup(Game *game, char *buffer)
     if (game->current_turn == game->player1)
     {
         move -= 1; // Ajuster l'index
-        printf("on est arrivé ici client 1");
+        printf("on est arrivé ici client 1\n");
         fflush(stdout);
     }
     else if (game->current_turn == game->player2)
     {
         move += 5; // Ajuster l'index
-        printf("on est arrivé ici client 2");
+        printf("on est arrivé ici client 2\n");
         fflush(stdout);
     }
 
@@ -350,9 +301,39 @@ void jouerCoup(Game *game, char *buffer)
             game->player2->tour = no;
             game->player1->tour = yes;
         }
+
+        if (game->game_over)
+        {
+            return; // Arrêter ici pour éviter d'exécuter le reste du code
+        }
     }
     else
     {
         write_client(game->current_turn->sock, "Coup invalide, essayez à nouveau.");
     }
+}
+
+void end_game(Game *game)
+{
+    if (!game)
+    {
+        fprintf(stderr, "Erreur : game est NULL dans end_game.\n");
+        return;
+    }
+
+    // Réinitialiser les états des joueurs
+    game->player1->etat = Initialisation;
+    game->player2->etat = Initialisation;
+
+    game->player1->tour = no;
+    game->player2->tour = no;
+
+    game->player1->game = NULL;
+    game->player2->game = NULL;
+
+    // Libérer la mémoire allouée au jeu
+    free(game);
+
+    printf("La partie est terminée et la mémoire a été libérée.\n");
+    fflush(stdout);
 }

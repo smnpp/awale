@@ -225,7 +225,7 @@ void app(void)
                      printf("Client %s joue\n", clients[i].name);
                      fflush(stdout);
                      jouerCoup(clients[i].game, buffer);
-                     afficherplateau(clients[i].game);
+                     display_board(clients[i].game);
                   }
                }
                break;
@@ -522,42 +522,11 @@ void start_game(Client *client1, Client *client2)
       client1->game = game;
       client2->game = game;
       initialiserGame(game, client1, client2);
-      afficherplateau(game);
+      display_board(game);
    }
    else
    {
       write_client(client1->sock, "Erreur lors du démarrage de la partie.\n");
       write_client(client2->sock, "Erreur lors du démarrage de la partie.\n");
    }
-}
-
-void parse_command(Client *client, const char *command, Client *clients, int actual)
-{
-   if (strncmp(command, "DEFY", 4) == 0)
-   {
-      char opponent_name[BUF_SIZE];
-      sscanf(command + 5, "%s", opponent_name);
-      Client *opponent = find_client_by_name(clients, actual, opponent_name);
-
-      if (opponent)
-      {
-         start_game(client, opponent);
-      }
-      else
-      {
-         write_client(client->sock, "Adversaire non trouvé\n");
-      }
-   }
-}
-
-Client *find_client_by_name(Client *clients, int actual, const char *name)
-{
-   for (int i = 0; i < actual; i++)
-   {
-      if (strcmp(clients[i].name, name) == 0)
-      {
-         return &clients[i];
-      }
-   }
-   return NULL; // Retourne NULL si le client n'est pas trouvé
 }
