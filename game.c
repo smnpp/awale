@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
+#include <stdbool.h>
 
 // Gestion d'un coup joué par un joueur
 int process_move(Game *game, Client *client, int move, char *moves)
@@ -146,11 +147,23 @@ void log_game_to_json(Game *game, const char *winner_name, const char *moves)
         return; // Gestion d'erreur si l'ID ne peut pas être généré
     }
 
-    FILE *file = fopen("data/games.json", "a");
+    FILE *file = fopen("data/games.json", "r+"); // Lecture et écriture
     if (file == NULL)
     {
-        perror("Erreur d'ouverture du fichier JSON");
-        return;
+        // Si le fichier n'existe pas, créez-le et initialisez le tableau JSON
+        file = fopen("data/games.json", "w");
+        if (file == NULL)
+        {
+            perror("Erreur d'ouverture du fichier JSON");
+            return;
+        }
+        fprintf(file, "[\n");
+    }
+    else
+    {
+        // Si le fichier existe, placer le curseur avant la fermeture du tableau `]`
+        fseek(file, -2, SEEK_END); // Reculer de 2 pour supprimer `]\n` (dernier objet)
+        fprintf(file, ",\n");
     }
 
     // Obtenir la date et l'heure actuelles
@@ -160,25 +173,20 @@ void log_game_to_json(Game *game, const char *winner_name, const char *moves)
     strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", t);
 
     // Ajouter les informations de la partie en format JSON
-    if (game_id > 1)
-    {
-        fprintf(file, ",\n{\n");
-    }
-    else
-    {
-        fprintf(file, "{\n");
-    }
-    fprintf(file, "  \"id\": %d,\n", game_id);
-    fprintf(file, "  \"date\": \"%s\",\n", timestamp);
-    fprintf(file, "  \"player1\": \"%s\",\n", game->player1->name);
-    fprintf(file, "  \"player2\": \"%s\",\n", game->player2->name);
-    fprintf(file, "  \"first_player\": \"%s\",\n", game->current_turn == game->player1 ? game->player1->name : game->player2->name);
-    fprintf(file, "  \"winner\": \"%s\",\n", winner_name);
-    fprintf(file, "  \"moves\": \"%s\"\n", moves);
-    fprintf(file, "}");
+    fprintf(file, "  {\n");
+    fprintf(file, "    \"id\": %d,\n", game_id);
+    fprintf(file, "    \"date\": \"%s\",\n", timestamp);
+    fprintf(file, "    \"player1\": \"%s\",\n", game->player1->name);
+    fprintf(file, "    \"player2\": \"%s\",\n", game->player2->name);
+    fprintf(file, "    \"first_player\": \"%s\",\n", game->current_turn == game->player1 ? game->player1->name : game->player2->name);
+    fprintf(file, "    \"winner\": \"%s\",\n", winner_name);
+    fprintf(file, "    \"moves\": \"%s\"\n", moves);
+    fprintf(file, "  }\n");
+    fprintf(file, "]\n");
 
     fclose(file);
 }
+
 void initialiserGame(Game *game, Client *client1, Client *client2)
 {
     game->player1 = client1;
