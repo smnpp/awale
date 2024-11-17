@@ -137,17 +137,20 @@ void app(void)
             if (FD_ISSET(clients[i].sock, &rdfs))
             {
 
-               Client client = clients[i];
-
                int c = read_client(clients[i].sock, buffer);
                /* client disconnected */
                if (c == 0)
                {
+                  if (clients[i].etat == EnPartie)
+                  {
+
+                     clients[i].opponent->etat = Initialisation;
+                     clients[i].opponent->opponent = NULL;
+                     clients[i].opponent->game = NULL;
+                     write_client(clients[i].opponent->sock, "Votre adversaire s'est déconnecté\nVeuillez choisir une option :\n1. Jouer contre un adversaire en ligne\n2. Quitter le jeu");
+                  }
 
                   deconnecterClient(clients, i, &actual);
-                  strncpy(buffer, client.name, BUF_SIZE - 1);
-                  strncat(buffer, " disconnected !", BUF_SIZE - strlen(buffer) - 1);
-                  send_message_to_all_clients(clients, client, actual, buffer, 1);
                }
 
                else
@@ -191,6 +194,7 @@ void app(void)
                            snprintf(message, sizeof(message), "\nDemande de partie de %s\nVeuillez répondre par Y ou N", clients[i].name);
                            write_client(clients[opponent_index].sock, message);
                            clients[opponent_index].etat = EnvoieReponse;
+                           clients[i].opponent = &clients[opponent_index];
                            clients[opponent_index].opponent = &clients[i];
                         }
                         else
