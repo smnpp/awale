@@ -412,9 +412,9 @@ int inscrireClient(const char *name)
 
 int listClients(Client clients[], int index, int *actual)
 {
+   int found = 0;
    write_client(clients[index].sock, "==============================");
 
-   int found = 0;
    for (int i = 0; i < *actual; i++)
    {
       if (i != index)
@@ -427,22 +427,35 @@ int listClients(Client clients[], int index, int *actual)
          else
          {
             snprintf(message, sizeof(message), "\n%d: %s - Disponible", i, clients[i].name);
+            found += 1;
          }
          write_client(clients[index].sock, message);
-         found = 1;
       }
    }
 
-   if (!found)
+   if (*actual == 1)
    {
       write_client(clients[index].sock, "\nAucun autre joueur n'est connecté.");
+      clients[index].etat = Enattente;
+      return 0;
    }
+   else
+   {
+      if (found == 0)
+      {
+         write_client(clients[index].sock, "\nAucun autre joueur n'est disponible.");
+         clients[index].etat = Enattente;
+         return -1;
+      }
+      else
+      {
+         write_client(clients[index].sock, "\n==============================");
+         write_client(clients[index].sock, "\nVeuillez choisir un numéro de joueur :");
 
-   write_client(clients[index].sock, "\n==============================");
-   write_client(clients[index].sock, "\nVeuillez choisir un numéro de joueur :");
-
-   clients[index].etat = DemandeDePartie;
-   return 1;
+         clients[index].etat = DemandeDePartie;
+         return 1;
+      }
+   }
 }
 
 int deconnecterClient(Client *clients, int i, int *actual)
