@@ -118,7 +118,7 @@ void app(void)
                strncpy(c.name, buffer, BUF_SIZE - 1);
                clients[actual] = c;
                clients[actual].etat = Initialisation;
-               clients[actual].etatjeu = Libre;
+               clients[actual].tour = no;
                write_client(csock, "Bienvenue dans le jeu Awale !\nVeuillez choisir une option :\n1. Jouer contre un adversaire en ligne\n2. Quitter le jeu");
                actual++;
             }
@@ -185,7 +185,7 @@ void app(void)
                      }
                      else
                      {
-                        if (clients[opponent_index].etatjeu == Libre)
+                        if (clients[opponent_index].etat != EnPartie || clients[opponent_index].etat != EnvoieReponse || clients[opponent_index].etat != DemandeDePartie)
                         {
                            char message[256];
                            snprintf(message, sizeof(message), "\nDemande de partie de %s\nVeuillez répondre par Y ou N", clients[i].name);
@@ -220,9 +220,12 @@ void app(void)
                         write_client(clients[i].sock, "\nVeuillez répondre par Y ou N");
                      }
                   }
-                  else
+                  else if (clients[i].etat == EnPartie && clients[i].tour == yes)
                   {
-                     parse_command(&clients[i], buffer, clients, actual);
+                     printf("Client %s joue\n", clients[i].name);
+                     fflush(stdout);
+                     jouerCoup(clients[i].game, buffer);
+                     afficherplateau(clients[i].game);
                   }
                }
                break;
@@ -413,7 +416,7 @@ int listClients(Client clients[], int index, int *actual)
       if (i != index)
       {
          char message[256];
-         if (clients[i].etatjeu == EnJeu)
+         if (clients[i].etat == EnPartie)
          {
             snprintf(message, sizeof(message), "\n%d: %s - En partie", i, clients[i].name);
          }
@@ -514,9 +517,12 @@ void start_game(Client *client1, Client *client2)
    Game *game = create_game(client1, client2);
    if (game)
    {
-      client1->etatjeu = EnJeu;
-      client2->etatjeu = EnJeu;
-      play_game(game, client1, client2);
+      client1->etat = EnPartie;
+      client2->etat = EnPartie;
+      client1->game = game;
+      client2->game = game;
+      initialiserGame(game, client1, client2);
+      afficherplateau(game);
    }
    else
    {

@@ -250,3 +250,109 @@ void log_game_to_json(Game *game, const char *winner_name, const char *moves)
 
     fclose(file);
 }
+void initialiserGame(Game *game, Client *client1, Client *client2)
+{
+    game->player1 = client1;
+    game->player2 = client2;
+    if (rand() % 2 == 0)
+    {
+        game->current_turn = client1;
+        client1->tour = yes;
+    }
+    else
+    {
+        game->current_turn = client2;
+        client2->tour = yes;
+    }
+
+    strcpy(game->moves, "");
+    game->game_over = 0;
+    initialiserPlateau(&game->jeu);
+}
+
+void afficherplateau(Game *game)
+{
+
+    char buffer_player1[BUF_SIZE];
+    char buffer_player2[BUF_SIZE];
+    generate_board_state(game, buffer_player1, buffer_player2);
+    write_client(game->player1->sock, buffer_player1);
+    write_client(game->player2->sock, buffer_player2);
+
+    // Indiquer le tour actuel
+    write_client(game->current_turn->sock, "C'est votre tour !");
+    write_client(game->current_turn->sock, "Choisissez un trou entre 1 et 6 :");
+    if (game->current_turn == game->player1)
+    {
+        write_client(game->player2->sock, "C'est le tour de l'adversaire.\n");
+    }
+    else
+    {
+        write_client(game->player1->sock, "C'est le tour de l'adversaire.\n");
+    }
+}
+
+void jouerCoup(Game *game, char *buffer)
+{
+
+    int move = atoi(buffer);
+    if (game == NULL)
+    {
+        fprintf(stderr, "Erreur : game est NULL dans jouerCoup.\n");
+        return;
+    }
+    if (game->player1 == NULL)
+    {
+        fprintf(stderr, "Erreur : player1 est NULL dans jouerCoup.\n");
+        return;
+    }
+    if (game->player2 == NULL)
+    {
+        fprintf(stderr, "Erreur : player2 est NULL dans jouerCoup.\n");
+        return;
+    }
+    if (game->current_turn == NULL)
+    {
+        fprintf(stderr, "Erreur : current_turn est NULL dans jouerCoup.\n");
+        return;
+    }
+    if (game->current_turn == game->player1)
+    {
+        move -= 1; // Ajuster l'index
+        printf("on est arrivé ici client 1");
+        fflush(stdout);
+    }
+    else if (game->current_turn == game->player2)
+    {
+        move += 5; // Ajuster l'index
+        printf("on est arrivé ici client 2");
+        fflush(stdout);
+    }
+
+    // Valider le coup
+    if (process_move(game, game->current_turn, move, game->moves))
+    {
+        // Ajouter le coup au suivi
+        char move_str[16];
+        snprintf(move_str, sizeof(move_str), "%d ", move);
+        strncat(game->moves, move_str, sizeof(game->moves) - strlen(game->moves) - 1);
+
+        // Alterner les joueurs
+        if (game->current_turn == game->player1)
+        {
+            game->current_turn = game->player2;
+            game->player1->tour = no;
+            game->player2->tour = yes;
+        }
+        else if (game->current_turn == game->player2)
+        {
+            game->current_turn = game->player1;
+            game->player2->tour = no;
+            game->player1->tour = yes;
+        }
+    }
+    else
+    {
+        write_client(game->current_turn->sock, "Coup invalide, essayez à nouveau.");
+    }
+}

@@ -7,21 +7,23 @@ enum Etat
    Enattente,
    Initialisation,
    EnvoieReponse,
-   DemandeDePartie
+   DemandeDePartie,
+   EnPartie
 };
-enum EtatJeu
+enum Tour
 {
-   EnJeu,
-   Libre
+   yes,
+   no
 };
 typedef struct Client Client; // Déclaration préalable de la structure Client
-
+typedef struct Game Game;     // Déclaration préalable de la structure Game
 struct Client
 {
    SOCKET sock;
    char name[BUF_SIZE];
    enum Etat etat;
-   enum EtatJeu etatjeu;
+   enum Tour tour;
+   Game *game;
    Client *opponent; // Pointeur vers un autre Client
 };
 
