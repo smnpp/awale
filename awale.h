@@ -17,11 +17,10 @@ typedef struct
 
 // Prototypes des fonctions
 void initialiserPlateau(Awale *jeu);
-void afficherPlateau(const Awale *jeu, char *buffer);
+void afficherPlateau(const Awale *jeu);
 int distribuerEtCapturer(Awale *jeu, int trou, char *buffer);
 void capturerGraines(Awale *jeu, int dernierTrou);
 int distribuerGraines(Awale *jeu, int trou);
-void jouerTour(Awale *jeu, char *buffer);
 bool partieTerminee(const Awale *jeu, char *buffer);
 
 #endif // AWALE_H

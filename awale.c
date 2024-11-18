@@ -20,29 +20,29 @@ void initialiserPlateau(Awale *jeu)
 }
 
 // Afficher le plateau de jeu sous forme de chaîne
-void afficherPlateau(const Awale *jeu, char *buffer)
+void afficherPlateau(const Awale *jeu)
 {
-    snprintf(buffer, BUF_SIZE, "==============================\n");
-
-    strcat(buffer, "Camp Joueur 2 : ");
+    printf("==============================\n");
+    printf("Camp Joueur 2 : ");
     for (int i = TROUS - 1; i >= TROUS / 2; i--)
     {
-        char trou[4];
-        snprintf(trou, sizeof(trou), "%d ", jeu->trous[i]);
-        strcat(buffer, trou);
+        printf("%d ", jeu->trous[i]);
     }
-    strcat(buffer, "\nCamp Joueur 1 : ");
+    printf("\n");
+
+    printf("Camp Joueur 1 : ");
     for (int i = 0; i < TROUS / 2; i++)
     {
-        char trou[4];
-        snprintf(trou, sizeof(trou), "%d ", jeu->trous[i]);
-        strcat(buffer, trou);
+        printf("%d ", jeu->trous[i]);
     }
+    printf("\n");
 
-    char scores[64];
-    snprintf(scores, sizeof(scores), "\n==============================\nScore Joueur 1: %d | Score Joueur 2: %d\n",
-             jeu->scoreJoueur1, jeu->scoreJoueur2);
-    strcat(buffer, scores);
+    printf("==============================\n");
+    printf("Score Joueur 1: %d | Score Joueur 2: %d\n",
+           jeu->scoreJoueur1, jeu->scoreJoueur2);
+    printf("==============================\n\n");
+
+    fflush(stdout); // S'assurer que tout est affiché immédiatement
 }
 
 // Fonction pour jouer un tour et renvoyer un message demandant le choix d'un trou
@@ -82,22 +82,23 @@ int distribuerGraines(Awale *jeu, int trou)
 // Fonction pour capturer les graines
 void capturerGraines(Awale *jeu, int dernierTrou)
 {
-    bool joueur1 = (jeu->tour % 2 == 0); // Joueur 1 joue si le tour est pair
-    int *score = joueur1 ? &jeu->scoreJoueur1 : &jeu->scoreJoueur2;
+    int *score = (jeu->tour % 2 == 0) ? &jeu->scoreJoueur2 : &jeu->scoreJoueur1;
 
-    // Capture des graines dans le camp adverse
-    while ((joueur1 && dernierTrou >= 6 && dernierTrou <= 11) ||
-           (!joueur1 && dernierTrou >= 0 && dernierTrou <= 5))
+    int campDebut = (jeu->tour % 2 == 0) ? 0 : 6;
+    int campFin = (jeu->tour % 2 == 0) ? 5 : 11;
+
+    // Parcourir les trous du camp adverse pour capturer les graines
+    while (dernierTrou >= campDebut && dernierTrou <= campFin)
     {
         if (jeu->trous[dernierTrou] == 2 || jeu->trous[dernierTrou] == 3)
         {
             *score += jeu->trous[dernierTrou];
             jeu->trous[dernierTrou] = 0;
-            dernierTrou--; // Passer au trou précédent
+            dernierTrou--;
         }
         else
         {
-            break; // Arrêter si le trou ne contient pas 2 ou 3 graines
+            break;
         }
     }
 }
@@ -119,6 +120,10 @@ int distribuerEtCapturer(Awale *jeu, int trou, char *buffer)
     if (partieTerminee(jeu, buffer)) // Vérifier si la partie est terminée
     {
         jeu->tour = -1; // Indiquer que la partie est terminée
+    }
+    else
+    {
+        jeu->tour++; // Passer au joueur suivant
     }
 
     return dernierTrou; // Retourner le dernier trou pour vérification
