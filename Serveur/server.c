@@ -147,6 +147,7 @@ void app(void)
                      clients[i].opponent->etat = Initialisation;
                      clients[i].opponent->opponent = NULL;
                      clients[i].opponent->game = NULL;
+                     clients[i].opponent->tour = no;
                      write_client(clients[i].opponent->sock, "Votre adversaire s'est déconnecté\nVeuillez choisir une option :\n1. Jouer contre un adversaire en ligne\n2.Observer une partie\n3. Quitter le jeu");
                      for (int j = 0; j < actual; j++)
                      {
