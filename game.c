@@ -4,6 +4,7 @@
 #include <time.h>
 #include <string.h>
 #include <stdbool.h>
+#include "3rdparty/cJSON/cJSON.h"
 
 // Gestion d'un coup joué par un joueur
 int process_move(Game *game, Client *client, int move, char *moves)
@@ -141,26 +142,36 @@ int get_next_game_id()
 
 void log_game_to_json(Game *game, const char *winner_name, const char *moves)
 {
-    FILE *file = fopen("data/games.json", "r+"); // Ouvrir en lecture/écriture
-
+    FILE *file = fopen("data/games.json", "r+");
     if (file == NULL)
     {
         perror("Erreur d'ouverture du fichier JSON");
         return;
     }
 
-    // Vérifier si le fichier est vide
+    // Charger le contenu existant (ou créer un tableau vide)
     fseek(file, 0, SEEK_END);
     long file_size = ftell(file);
-    if (file_size == 0)
+    fseek(file, 0, SEEK_SET);
+
+    char *data = NULL;
+    if (file_size > 0)
     {
-        fprintf(file, "[\n"); // Ajouter le crochet d'ouverture si le fichier est vide
+        data = (char *)malloc(file_size + 1);
+        fread(data, 1, file_size, file);
+        data[file_size] = '\0';
     }
-    else
+
+    cJSON *game_array = data ? cJSON_Parse(data) : cJSON_CreateArray();
+    free(data);
+
+    if (!game_array)
     {
-        fseek(file, -2, SEEK_END); // Reculer pour supprimer la fin précédente ("]\n")
-        fprintf(file, ",\n");      // Ajouter une virgule avant le nouvel objet
+        game_array = cJSON_CreateArray();
     }
+
+    // Créer un nouvel objet JSON pour la partie
+    cJSON *game_obj = cJSON_CreateObject();
 
     // Obtenir la date et l'heure actuelles
     time_t now = time(NULL);
@@ -168,18 +179,27 @@ void log_game_to_json(Game *game, const char *winner_name, const char *moves)
     char timestamp[64];
     strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", t);
 
-    // Ajouter les informations de la partie en format JSON
-    fprintf(file, "  {\n");
-    fprintf(file, "    \"id\": %d,\n", get_next_game_id());
-    fprintf(file, "    \"date\": \"%s\",\n", timestamp);
-    fprintf(file, "    \"player1\": \"%s\",\n", game->player1->name);
-    fprintf(file, "    \"player2\": \"%s\",\n", game->player2->name);
-    fprintf(file, "    \"first_player\": \"%s\",\n", game->current_turn == game->player1 ? game->player1->name : game->player2->name);
-    fprintf(file, "    \"winner\": \"%s\",\n", winner_name);
-    fprintf(file, "    \"moves\": \"%s\"\n", moves);
-    fprintf(file, "  }\n]");
+    // Ajouter les informations de la partie
+    cJSON_AddNumberToObject(game_obj, "id", get_next_game_id());
+    cJSON_AddStringToObject(game_obj, "date", timestamp);
+    cJSON_AddStringToObject(game_obj, "player1", game->player1->name);
+    cJSON_AddStringToObject(game_obj, "player2", game->player2->name);
+    cJSON_AddStringToObject(game_obj, "first_player", game->current_turn == game->player1 ? game->player1->name : game->player2->name);
+    cJSON_AddStringToObject(game_obj, "winner", winner_name);
+    cJSON_AddStringToObject(game_obj, "moves", moves);
 
+    // Ajouter l'objet au tableau
+    cJSON_AddItemToArray(game_array, game_obj);
+
+    // Sauvegarder dans le fichier
+    char *json_string = cJSON_Print(game_array);
+    freopen("data/games.json", "w", file); // Réouvrir en mode écriture
+    fprintf(file, "%s", json_string);
     fclose(file);
+
+    // Nettoyer
+    cJSON_Delete(game_array);
+    free(json_string);
 }
 
 void initialiserGame(Game *game, Client *client1, Client *client2)

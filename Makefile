@@ -7,9 +7,13 @@ SERVER_BUILD_DIR = $(BUILD_DIR)/Serveur
 CLIENT_EXEC = $(BUILD_DIR)/client_exec
 SERVER_EXEC = $(BUILD_DIR)/server_exec
 
+# Répertoire de la bibliothèque cJSON
+CJSON_SRC = 3rdparty/cJSON/cJSON.c
+CJSON_HEADERS = 3rdparty/cJSON
+
 # Compilateur et options de compilation
 CC = gcc
-CFLAGS = -Wall -g
+CFLAGS = -Wall -g -I$(CJSON_HEADERS)  # Ajout du chemin des headers cJSON
 
 # Fichiers sources et objets pour le client et le serveur
 CLIENT_SRC = Client/client.c awale.c game.c
@@ -34,11 +38,11 @@ $(SERVER_BUILD_DIR):
 
 # Compilation du client
 $(CLIENT_EXEC): $(CLIENT_OBJ)
-	$(CC) $(CFLAGS) -o $@ $(CLIENT_OBJ)
+	$(CC) $(CFLAGS) -o $@ $(CLIENT_OBJ) $(CJSON_SRC)
 
 # Compilation du serveur
 $(SERVER_EXEC): $(SERVER_OBJ)
-	$(CC) $(CFLAGS) -o $@ $(SERVER_OBJ)
+	$(CC) $(CFLAGS) -o $@ $(SERVER_OBJ) $(CJSON_SRC)
 
 # Règle pour compiler client.o dans le répertoire build/Client
 $(CLIENT_BUILD_DIR)/client.o: Client/client.c Client/client.h awale.h game.h | $(CLIENT_BUILD_DIR)
