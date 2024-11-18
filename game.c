@@ -111,6 +111,23 @@ void generate_board_state(Game *game, char *buffer_client1, char *buffer_client2
              "\n==============================\nScores - Vous : %d | Adversaire: %d\n",
              game->jeu.scoreJoueur2, game->jeu.scoreJoueur1);
 }
+void generate_board_state_Observateur(Game *game, char *bufferObservateur)
+{
+    snprintf(bufferObservateur, BUF_SIZE, "Plateau actuel:\n==============================\n%s : ", game->player2->name);
+    for (int i = TROUS - 1; i >= TROUS / 2; i--)
+    {
+        snprintf(bufferObservateur + strlen(bufferObservateur), BUF_SIZE - strlen(bufferObservateur), "%d ", game->jeu.trous[i]);
+    }
+
+    snprintf(bufferObservateur + strlen(bufferObservateur), BUF_SIZE, "\n%s    : ", game->player1->name);
+    for (int i = 0; i < TROUS / 2; i++)
+    {
+        snprintf(bufferObservateur + strlen(bufferObservateur), BUF_SIZE - strlen(bufferObservateur), "%d ", game->jeu.trous[i]);
+    }
+    snprintf(bufferObservateur + strlen(bufferObservateur), BUF_SIZE - strlen(bufferObservateur),
+             "\n==============================\nScores - %s : %d | %s: %d\n",
+             game->player1->name, game->jeu.scoreJoueur1, game->player2->name, game->jeu.scoreJoueur2);
+}
 
 int get_next_game_id()
 {
@@ -253,6 +270,24 @@ void display_board(Game *game)
     {
         write_client(game->player1->sock, "C'est le tour de l'adversaire.\n");
     }
+}
+void display_board_Observateur(Client *client)
+{
+    if (!(client->game))
+    {
+        fprintf(stderr, "Erreur : tentative d'afficher un plateau pour un jeu inexistant.\n");
+        return;
+    }
+
+    if (client->game->game_over)
+    {
+        fprintf(stderr, "Erreur : tentative d'afficher un plateau pour une partie terminée.\n");
+        return;
+    }
+
+    char buffer_observateur[BUF_SIZE];
+    generate_board_state_Observateur(client->game, buffer_observateur);
+    write_client(client->sock, buffer_observateur);
 }
 
 void jouerCoup(Game *game, char *buffer)

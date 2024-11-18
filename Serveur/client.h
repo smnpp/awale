@@ -8,7 +8,8 @@ enum Etat
    Initialisation,
    EnvoieReponse,
    DemandeDePartie,
-   EnPartie
+   EnPartie,
+   Observateur
 };
 enum Tour
 {

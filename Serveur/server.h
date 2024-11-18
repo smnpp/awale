@@ -53,4 +53,5 @@ void write_client(SOCKET sock, const char *buffer);
 void start_game(Client *client1, Client *client2);
 void parse_command(Client *client, const char *command, Client *clients, int actual);
 Client *find_client_by_name(Client *clients, int actual, const char *name);
+void listParties(Client *clients, int index, int *actual);
 #endif /* guard */

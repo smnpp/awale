@@ -119,7 +119,7 @@ void app(void)
                clients[actual] = c;
                clients[actual].etat = Initialisation;
                clients[actual].tour = no;
-               write_client(csock, "Bienvenue dans le jeu Awale !\nVeuillez choisir une option :\n1. Jouer contre un adversaire en ligne\n2. Quitter le jeu");
+               write_client(csock, "Bienvenue dans le jeu Awale !\nVeuillez choisir une option :\n1. Jouer contre un adversaire en ligne\n2.Observer une partie\n3.Quitter le jeu ");
                actual++;
             }
          }
@@ -131,9 +131,9 @@ void app(void)
          {
             if (clients[i].etat == Enattente)
             {
-               write_client(clients[i].sock, "\nUn nouveau joueur s'est connecté\n Tapez 1 pour jouer avec un autre joeur");
+               write_client(clients[i].sock, "\nUn nouveau joueur s'est connecté\n Tapez 1 pour jouer avec un autre joueur");
             }
-            /* a client is talking */
+
             if (FD_ISSET(clients[i].sock, &rdfs))
             {
 
@@ -147,7 +147,15 @@ void app(void)
                      clients[i].opponent->etat = Initialisation;
                      clients[i].opponent->opponent = NULL;
                      clients[i].opponent->game = NULL;
-                     write_client(clients[i].opponent->sock, "Votre adversaire s'est déconnecté\nVeuillez choisir une option :\n1. Jouer contre un adversaire en ligne\n2. Quitter le jeu");
+                     write_client(clients[i].opponent->sock, "Votre adversaire s'est déconnecté\nVeuillez choisir une option :\n1. Jouer contre un adversaire en ligne\n2.Observer une partie\n3. Quitter le jeu");
+                     for (int j = 0; j < actual; j++)
+                     {
+                        if (clients[j].game == clients[i].game && clients[j].etat == Observateur)
+                        {
+                           write_client(clients[j].sock, "La partie a été interrompue\nVeuillez choisir une option :\n1. Jouer contre un adversaire en ligne\n2.Observer une partie\n3. Quitter le jeu");
+                           clients[j].etat = Initialisation;
+                        }
+                     }
                   }
 
                   deconnecterClient(clients, i, &actual);
@@ -165,7 +173,13 @@ void app(void)
                         write_client(clients[i].sock, "\nVous avez choisi de jouer avec un autre joueur.\nVoici la liste des clients connectés:\n");
                         listClients(clients, i, &actual);
                      }
-                     if (strcmp(buffer, "2") == 0)
+                     else if (strcmp(buffer, "2") == 0)
+                     {
+                        write_client(clients[i].sock, "\nVous avez choisi d'observer");
+                        listParties(clients, i, &actual);
+                        clients[i].etat = Observateur;
+                     }
+                     else if (strcmp(buffer, "3") == 0)
                      {
                         write_client(clients[i].sock, "\nVous avez choisi de quitter");
                         deconnecterClient(clients, i, &actual);
@@ -177,6 +191,28 @@ void app(void)
                      {
                         write_client(clients[i].sock, "\nVous avez choisi de jouer avec un autre joueur.\nVoici la liste des clients connectés:\n");
                         listClients(clients, i, &actual);
+                     }
+                  }
+                  else if (clients[i].etat == Observateur)
+                  {
+                     int player_index = atoi(buffer);
+                     if (player_index < 0 || player_index >= actual)
+                     {
+                        write_client(clients[i].sock, "\nNuméro de partie invalide");
+                     }
+                     else
+                     {
+                        if (clients[player_index].etat == EnPartie)
+                        {
+
+                           clients[i].game = clients[player_index].game;
+                           display_board_Observateur(&clients[i]);
+                        }
+                        else
+                        {
+                           write_client(clients[i].sock, "\nLa partie choisie n'est plus en cours\nVeuillez chosir une autre partie");
+                           listParties(clients, i, &actual);
+                        }
                      }
                   }
                   else if (clients[i].etat == DemandeDePartie)
@@ -230,6 +266,13 @@ void app(void)
                      fflush(stdout);
                      jouerCoup(clients[i].game, buffer);
                      display_board(clients[i].game);
+                     for (int j = 0; j < actual; j++)
+                     {
+                        if (clients[j].game == clients[i].game && clients[j].etat == Observateur)
+                        {
+                           display_board_Observateur(&clients[j]);
+                        }
+                     }
                   }
                }
                break;
@@ -546,4 +589,70 @@ void start_game(Client *client1, Client *client2)
       write_client(client1->sock, "Erreur lors du démarrage de la partie.\n");
       write_client(client2->sock, "Erreur lors du démarrage de la partie.\n");
    }
+}
+
+int name_exists(char **listname, int count, const char *name)
+{
+   for (int j = 0; j < count; j++)
+   {
+      if (strcmp(listname[j], name) == 0)
+      {
+         return 1; // Name found in list
+      }
+   }
+   return 0; // Name not found
+}
+
+void listParties(Client *clients, int index, int *actual)
+{
+   int found = 0;
+   write_client(clients[index].sock, "==============================");
+
+   // Allocate memory for listname with a maximum size of *actual * 2
+   char **listname = malloc((*actual * 2) * sizeof(char *));
+   int name_count = 0;
+
+   for (int i = 0; i < *actual; i++)
+   {
+      if (i != index)
+      {
+         char message[256];
+         if (clients[i].etat == EnPartie)
+         {
+            // Check if either clients[i].name or clients[i].opponent->name is already in listname
+            if (name_exists(listname, name_count, clients[i].name) ||
+                name_exists(listname, name_count, clients[i].opponent->name))
+            {
+               // Skip this client, as they or their opponent are already in a game
+               continue;
+            }
+
+            // Add clients[i].name to listname if not already present
+            listname[name_count] = strdup(clients[i].name);
+            name_count++;
+            // Add clients[i].opponent->name to listname if not already present
+            listname[name_count] = strdup(clients[i].opponent->name);
+            name_count++;
+
+            snprintf(message, sizeof(message), "\n%d: %s - En partie VS - %s", i, clients[i].name, clients[i].opponent->name);
+            found += 1;
+
+            write_client(clients[index].sock, message);
+         }
+      }
+   }
+   clients[index].etat = Observateur;
+
+   if (found == 0)
+   {
+      write_client(clients[index].sock, "\nAucune partie en cours.");
+      clients[index].etat = Initialisation;
+   }
+
+   // Free the memory allocated for listname
+   for (int k = 0; k < name_count; k++)
+   {
+      free(listname[k]);
+   }
+   free(listname);
 }
