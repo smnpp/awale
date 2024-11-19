@@ -50,7 +50,6 @@ int process_move(Game *game, Client *client, int move, char *moves)
 
         if (game->game_over)
         {
-            end_game(game);
 
             // Ne pas retourner à du code qui utilise `game` ou ses champs
             return 1; // Fin du jeu
@@ -350,8 +349,10 @@ void jouerCoup(Game *game, char *buffer)
 
         if (game->game_over)
         {
-            return; // Arrêter ici pour éviter d'exécuter le reste du code
+            end_game(game);
+            return;
         }
+
         // Alterner les joueurs
         else if (game->current_turn == game->player1)
         {
@@ -387,12 +388,8 @@ void end_game(Game *game)
     game->player1->tour = no;
     game->player2->tour = no;
 
-    game->player1->game = NULL;
-    game->player2->game = NULL;
-    write_client(game->player1->sock, "La partie est terminée.\nVeuillez choisir une option :\n1. Jouer contre un adversaire en ligne\n2.Observer une partie\n3. Quitter le jeu");
-    write_client(game->player2->sock, "La partie est terminée.\nVeuillez choisir une option :\n1. Jouer contre un adversaire en ligne\n2.Observer une partie\n3. Quitter le jeu");
-
-    // Libérer la mémoire allouée au jeu
+    write_client(game->player1->sock, "La partie est terminée.\nVeuillez choisir une option :\n1. Jouer contre un adversaire en ligne\n2. Observer une partie\n3. Quitter le jeu");
+    write_client(game->player2->sock, "La partie est terminée.\nVeuillez choisir une option :\n1. Jouer contre un adversaire en ligne\n2. Observer une partie\n3. Quitter le jeu");
 
     printf("La partie est terminée et la mémoire a été libérée.\n");
     fflush(stdout);
