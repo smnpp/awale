@@ -382,6 +382,8 @@ void end_game(Game *game)
     // Réinitialiser les états des joueurs
     game->player1->etat = Initialisation;
     game->player2->etat = Initialisation;
+    write_client(game->player1->sock, "La partie est terminée.\nVeuillez choisir une option :\n1. Jouer contre un adversaire en ligne\n2.Observer une partie\n3. Quitter le jeu");
+    write_client(game->player2->sock, "La partie est terminée.\nVeuillez choisir une option :\n1. Jouer contre un adversaire en ligne\n2.Observer une partie\n3. Quitter le jeu");
 
     game->player1->tour = no;
     game->player2->tour = no;
