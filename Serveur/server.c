@@ -734,6 +734,11 @@ void process_command(Client *client, char *buffer, Client *clients, int *actual)
    // Commandes générales (hors partie)
    if (strncmp(buffer, CMD_PLAY, strlen(CMD_PLAY)) == 0)
    {
+      if (client->etat == EnPartie || client->etat == EnvoieReponse || client->etat == DemandeDePartie)
+      {
+         write_client(client->sock, "Vous êtes déjà en attente d'une partie.");
+         return;
+      }
       char *target = buffer + strlen(CMD_PLAY) + 1;
       if (target && *target)
       {
@@ -746,6 +751,7 @@ void process_command(Client *client, char *buffer, Client *clients, int *actual)
                   char message[256];
                   snprintf(message, sizeof(message), "\nDemande de partie de %s\nRépondez /accept ou /decline", client->name);
                   write_client(clients[i].sock, message);
+                  client->etat = DemandeDePartie;
                   clients[i].etat = EnvoieReponse;
                   client->opponent = &clients[i];
                   clients[i].opponent = client;
