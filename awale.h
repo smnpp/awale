@@ -12,6 +12,7 @@ typedef struct
     int trous[TROUS];
     int scoreJoueur1;
     int scoreJoueur2;
+    int firstPlayer;
     int tour; // Utilisé pour déterminer quel joueur joue
 } Awale;
 

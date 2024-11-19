@@ -82,10 +82,20 @@ int distribuerGraines(Awale *jeu, int trou)
 // Fonction pour capturer les graines
 void capturerGraines(Awale *jeu, int dernierTrou)
 {
-    int *score = (jeu->tour % 2 == 0) ? &jeu->scoreJoueur2 : &jeu->scoreJoueur1;
+    int *score = (jeu->tour % 2 == 0) ? &jeu->scoreJoueur1 : &jeu->scoreJoueur2;
 
-    int campDebut = (jeu->tour % 2 == 0) ? 0 : 6;
-    int campFin = (jeu->tour % 2 == 0) ? 5 : 11;
+    int campDebut, campFin;
+
+    if (jeu->firstPlayer == 1)
+    {
+        campDebut = (jeu->tour % 2 == 0) ? 6 : 0;
+        campFin = (jeu->tour % 2 == 0) ? 11 : 5;
+    }
+    else
+    {
+        campDebut = (jeu->tour % 2 == 0) ? 0 : 6;
+        campFin = (jeu->tour % 2 == 0) ? 5 : 11;
+    }
 
     // Parcourir les trous du camp adverse pour capturer les graines
     while (dernierTrou >= campDebut && dernierTrou <= campFin)

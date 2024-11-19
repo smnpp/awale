@@ -226,12 +226,14 @@ void initialiserGame(Game *game, Client *client1, Client *client2)
         game->current_turn = client1;
         client1->tour = yes;
         client2->tour = no;
+        game->jeu.firstPlayer = 1;
     }
     else
     {
         game->current_turn = client2;
         client2->tour = yes;
         client1->tour = no;
+        game->jeu.firstPlayer = 2;
     }
 
     strcpy(game->moves, "");
