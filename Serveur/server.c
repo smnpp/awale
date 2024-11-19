@@ -293,6 +293,10 @@ void app(void)
                            write_client(clients[j].sock, "La partie est terminée.\nVeuillez choisir une option :\n1. Jouer contre un adversaire en ligne\n2.Observer une partie\n3. Quitter le jeu");
                         }
                      }
+                     if (clients[i].game->game_over == 1)
+                     {
+                        free(clients[i].game);
+                     }
                   }
                }
                break;

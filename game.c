@@ -353,7 +353,7 @@ void jouerCoup(Game *game, char *buffer)
             return; // Arrêter ici pour éviter d'exécuter le reste du code
         }
         // Alterner les joueurs
-        if (game->current_turn == game->player1)
+        else if (game->current_turn == game->player1)
         {
             game->current_turn = game->player2;
             game->player1->tour = no;
