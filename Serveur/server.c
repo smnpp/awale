@@ -196,8 +196,11 @@ void app(void)
                   }
                   else if (clients[i].etat == Observateur)
                   {
-                     int player_index = atoi(buffer);
-                     if (player_index < 0 || player_index >= actual)
+                     char *endptr;
+                     int player_index = strtol(buffer, &endptr, 10);
+
+                     // Vérifier si la conversion est invalide ou hors limites
+                     if (endptr == buffer || *endptr != '\0' || player_index < 0 || player_index >= actual || player_index == i)
                      {
                         write_client(clients[i].sock, "\nNuméro de partie invalide");
                      }
@@ -218,8 +221,15 @@ void app(void)
                   }
                   else if (clients[i].etat == DemandeDePartie)
                   {
-                     int opponent_index = atoi(buffer);
-                     if (opponent_index < 0 || opponent_index >= actual)
+                     char *endptr;
+                     int opponent_index = strtol(buffer, &endptr, 10);
+
+                     // Vérifier si la conversion est invalide
+                     if (endptr == buffer || *endptr != '\0')
+                     {
+                        write_client(clients[i].sock, "\nNuméro de joueur invalide");
+                     }
+                     else if (opponent_index < 0 || opponent_index >= actual || opponent_index == i)
                      {
                         write_client(clients[i].sock, "\nNuméro de joueur invalide");
                      }
@@ -266,6 +276,7 @@ void app(void)
                      printf("Client %s joue\n", clients[i].name);
                      fflush(stdout);
                      jouerCoup(clients[i].game, buffer);
+
                      if (clients[i].game->game_over != 1)
                      {
                         display_board(clients[i].game);

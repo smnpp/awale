@@ -346,6 +346,10 @@ void jouerCoup(Game *game, char *buffer)
         snprintf(move_str, sizeof(move_str), "%d ", move);
         strncat(game->moves, move_str, sizeof(game->moves) - strlen(game->moves) - 1);
 
+        if (game->game_over)
+        {
+            return; // Arrêter ici pour éviter d'exécuter le reste du code
+        }
         // Alterner les joueurs
         if (game->current_turn == game->player1)
         {
@@ -358,11 +362,6 @@ void jouerCoup(Game *game, char *buffer)
             game->current_turn = game->player1;
             game->player2->tour = no;
             game->player1->tour = yes;
-        }
-
-        if (game->game_over)
-        {
-            return; // Arrêter ici pour éviter d'exécuter le reste du code
         }
     }
     else
