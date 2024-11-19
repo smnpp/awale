@@ -626,7 +626,7 @@ int name_exists(char **listname, int count, const char *name)
 void listParties(Client *clients, int index, int *actual)
 {
    int found = 0;
-   write_client(clients[index].sock, "==============================");
+   write_client(clients[index].sock, "\n==============================");
 
    // Allocate memory for listname with a maximum size of *actual * 2
    char **listname = malloc((*actual * 2) * sizeof(char *));
@@ -654,10 +654,11 @@ void listParties(Client *clients, int index, int *actual)
             listname[name_count] = strdup(clients[i].opponent->name);
             name_count++;
 
-            snprintf(message, sizeof(message), "\n%d: %s - En partie VS - %s", i, clients[i].name, clients[i].opponent->name);
+            snprintf(message, sizeof(message), "\n%d: %s -VS- %s", i, clients[i].name, clients[i].opponent->name);
             found += 1;
 
             write_client(clients[index].sock, message);
+            write_client(clients[index].sock, "\n==============================");
          }
       }
    }
