@@ -697,14 +697,12 @@ void process_command(Client *client, char *buffer, Client *clients, int *actual)
          client->opponent->tour = no;
          display_help(client->opponent);
 
-         for (int j = 0; j < *actual; j++)
+         for (int j = 0; j < client->game->nb_observers; j++)
          {
-            if (clients[j].game == client->game && clients[j].etat == Observateur)
-            {
-               write_client(clients[j].sock, "La partie a été interrompue\n");
-               display_help(&clients[j]);
-               clients[j].etat = Initialisation;
-            }
+
+            write_client(client->game->observers[j]->sock, "La partie a été interrompue\n");
+            display_help(client->game->observers[j]);
+            client->game->observers[j]->etat = Initialisation;
          }
       }
 
@@ -729,8 +727,16 @@ void process_command(Client *client, char *buffer, Client *clients, int *actual)
          client->game = NULL;
          // deconnecterClient(clients, client->sock - clients[0].sock, actual);
          display_help(client->opponent);
+         for (int j = 0; j < client->game->nb_observers; j++)
+         {
+
+            write_client(client->game->observers[j]->sock, "La partie a été interrompue\n");
+            display_help(client->game->observers[j]);
+            client->game->observers[j]->etat = Initialisation;
+         }
          client->opponent = NULL;
          display_help(client);
+
          return;
       }
       else if (strncmp(buffer, CMD_MSG, strlen(CMD_MSG)) == 0 ||
@@ -766,12 +772,10 @@ void process_command(Client *client, char *buffer, Client *clients, int *actual)
             display_board(client->game);
 
             // Mise à jour des observateurs
-            for (int j = 0; j < *actual; j++)
+            for (int j = 0; j < client->game->nb_observers; j++)
             {
-               if (clients[j].game == client->game && clients[j].etat == Observateur)
-               {
-                  display_board_Observateur(&clients[j]);
-               }
+
+               display_board_Observateur(client->game->observers[j]);
             }
          }
 
