@@ -69,12 +69,6 @@ Game *create_game(Client *client1, Client *client2)
         perror("Erreur d'allocation mémoire pour Game");
         return NULL;
     }
-
-    game->player1 = client1;
-    game->player2 = client2;
-    game->current_turn = client1;
-    game->game_over = 0;
-
     return game;
 }
 
@@ -223,15 +217,21 @@ void initialiserGame(Game *game, Client *client1, Client *client2)
 {
     game->player1 = client1;
     game->player2 = client2;
-    if (rand() % 2 == 0)
+
+    srand((unsigned int)(time(NULL) ^ (uintptr_t)&game));
+    int random = rand() % 2;
+
+    if (random == 0)
     {
         game->current_turn = client1;
         client1->tour = yes;
+        client2->tour = no;
     }
     else
     {
         game->current_turn = client2;
         client2->tour = yes;
+        client1->tour = no;
     }
 
     strcpy(game->moves, "");
