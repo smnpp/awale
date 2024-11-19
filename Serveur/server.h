@@ -54,4 +54,6 @@ void start_game(Client *client1, Client *client2);
 void parse_command(Client *client, const char *command, Client *clients, int actual);
 Client *find_client_by_name(Client *clients, int actual, const char *name);
 void listParties(Client *clients, int index, int *actual);
+int send_message_to_client_by_name(Client *clients, int actual, const char *sender_name, const char *target_name, const char *message);
+void send_message_to_all_clients(Client *clients, const char *sender_name, int actual, const char *message);
 #endif /* guard */

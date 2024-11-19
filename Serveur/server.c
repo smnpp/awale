@@ -11,7 +11,6 @@
 int init_connection(void);
 int inscrireClient(const char *name);
 int deconnecterClient(Client *clients, int i, int *actual);
-void send_message_to_all_clients(Client *clients, Client sender, int actual, const char *buffer, char from_server);
 int listClients(Client clients[], int index, int *actual);
 void clear_clients(Client *clients, int actual);
 void remove_client(Client *clients, int to_remove, int *actual);
@@ -161,136 +160,174 @@ void app(void)
 
                   deconnecterClient(clients, i, &actual);
                }
-
                else
                {
-
-                  if (clients[i].etat == Initialisation)
-
+                  if (strncmp(buffer, "/msg ", 5) == 0 || strncmp(buffer, "/all ", 5) == 0)
                   {
+                     if (strncmp(buffer, "/msg ", 5) == 0)
+                     {
+                        // Message privé
+                        char *target = strtok(buffer + 5, " ");
+                        char *message = strtok(NULL, "");
 
-                     if (strcmp(buffer, "1") == 0)
-                     {
-                        write_client(clients[i].sock, "\nVous avez choisi de jouer avec un autre joueur.\nVoici la liste des clients connectés:\n");
-                        listClients(clients, i, &actual);
-                     }
-                     else if (strcmp(buffer, "2") == 0)
-                     {
-                        write_client(clients[i].sock, "\nVous avez choisi d'observer");
-                        listParties(clients, i, &actual);
-                        clients[i].etat = Observateur;
-                     }
-                     else if (strcmp(buffer, "3") == 0)
-                     {
-                        write_client(clients[i].sock, "\nVous avez choisi de quitter");
-                        deconnecterClient(clients, i, &actual);
-                     }
-                  }
-                  else if (clients[i].etat == Enattente)
-                  {
-                     if (strcmp(buffer, "1") == 0)
-                     {
-                        write_client(clients[i].sock, "\nVous avez choisi de jouer avec un autre joueur.\nVoici la liste des clients connectés:\n");
-                        listClients(clients, i, &actual);
-                     }
-                  }
-                  else if (clients[i].etat == Observateur)
-                  {
-                     char *endptr;
-                     int player_index = strtol(buffer, &endptr, 10);
-
-                     // Vérifier si la conversion est invalide ou hors limites
-                     if (endptr == buffer || *endptr != '\0' || player_index < 0 || player_index >= actual || player_index == i)
-                     {
-                        write_client(clients[i].sock, "\nNuméro de partie invalide");
-                     }
-                     else if (clients[i].game == NULL) // A verifier en cas de pepin
-                     {
-                        if (clients[player_index].etat == EnPartie)
+                        if (target && message)
                         {
-
-                           clients[i].game = clients[player_index].game;
-                           display_board_Observateur(&clients[i]);
+                           int result = send_message_to_client_by_name(clients, actual, clients[i].name, target, message);
+                           if (result == 0)
+                           {
+                              write_client(clients[i].sock, "Destinataire non trouvé.");
+                           }
                         }
                         else
                         {
-                           write_client(clients[i].sock, "\nLa partie choisie n'est plus en cours\nVeuillez chosir une autre partie");
+                           write_client(clients[i].sock, "Format incorrect. Utilisez : /msg <nom> <message>");
+                        }
+                     }
+                     else if (strncmp(buffer, "/all ", 5) == 0)
+                     {
+                        // Message à tous
+                        char *message = buffer + 5;
+                        if (message && strlen(message) > 0)
+                        {
+                           send_message_to_all_clients(clients, clients[i].name, actual, message);
+                        }
+                        else
+                        {
+                           write_client(clients[i].sock, "Format incorrect. Utilisez : /all <message>");
+                        }
+                     }
+                  }
+
+                  else
+                  {
+
+                     if (clients[i].etat == Initialisation)
+
+                     {
+
+                        if (strcmp(buffer, "1") == 0)
+                        {
+                           write_client(clients[i].sock, "\nVous avez choisi de jouer avec un autre joueur.\nVoici la liste des clients connectés:\n");
+                           listClients(clients, i, &actual);
+                        }
+                        else if (strcmp(buffer, "2") == 0)
+                        {
+                           write_client(clients[i].sock, "\nVous avez choisi d'observer");
                            listParties(clients, i, &actual);
+                           clients[i].etat = Observateur;
+                        }
+                        else if (strcmp(buffer, "3") == 0)
+                        {
+                           write_client(clients[i].sock, "\nVous avez choisi de quitter");
+                           deconnecterClient(clients, i, &actual);
                         }
                      }
-                  }
-                  else if (clients[i].etat == DemandeDePartie)
-                  {
-                     char *endptr;
-                     int opponent_index = strtol(buffer, &endptr, 10);
-
-                     // Vérifier si la conversion est invalide
-                     if (endptr == buffer || *endptr != '\0')
+                     else if (clients[i].etat == Enattente)
                      {
-                        write_client(clients[i].sock, "\nNuméro de joueur invalide");
-                     }
-                     else if (opponent_index < 0 || opponent_index >= actual || opponent_index == i)
-                     {
-                        write_client(clients[i].sock, "\nNuméro de joueur invalide");
-                     }
-                     else
-                     {
-                        if ((clients[opponent_index].etat != EnPartie) && (clients[opponent_index].etat != EnvoieReponse))
+                        if (strcmp(buffer, "1") == 0)
                         {
-                           char message[256];
-                           snprintf(message, sizeof(message), "\nDemande de partie de %s\nVeuillez répondre par Y ou N", clients[i].name);
-                           write_client(clients[opponent_index].sock, message);
-                           clients[opponent_index].etat = EnvoieReponse;
-                           clients[i].opponent = &clients[opponent_index];
-                           clients[opponent_index].opponent = &clients[i];
-                        }
-                        else
-                        {
-                           write_client(clients[i].sock, "\nLe joueur choisi est déjà en partie\nVeuillez chosir un autre joueur");
+                           write_client(clients[i].sock, "\nVous avez choisi de jouer avec un autre joueur.\nVoici la liste des clients connectés:\n");
                            listClients(clients, i, &actual);
                         }
                      }
-                  }
-                  else if (clients[i].etat == EnvoieReponse)
-                  {
-                     if (strcmp(buffer, "Y") == 0)
+                     else if (clients[i].etat == Observateur)
                      {
-                        write_client(clients[i].sock, "\nVous avez accepté la demande de partie\n");
-                        write_client(clients[i].opponent->sock, "\nVotre demande de partie a été acceptée\n");
-                        start_game(&clients[i], clients[i].opponent);
-                     }
-                     else if (strcmp(buffer, "N") == 0)
-                     {
-                        write_client(clients[i].sock, "\nVous avez refusé la demande de partie\n");
-                        write_client(clients[i].opponent->sock, "\nVotre demande de partie a été refusée\n");
-                        clients[i].etat = Initialisation;
-                        clients[i].opponent->etat = Initialisation;
-                     }
-                     else
-                     {
-                        write_client(clients[i].sock, "\nVeuillez répondre par Y ou N");
-                     }
-                  }
-                  else if (clients[i].etat == EnPartie && clients[i].tour == yes && clients[i].game->game_over != 1)
-                  {
-                     printf("Client %s joue\n", clients[i].name);
-                     fflush(stdout);
-                     jouerCoup(clients[i].game, buffer);
+                        char *endptr;
+                        int player_index = strtol(buffer, &endptr, 10);
 
-                     if (clients[i].game->game_over != 1)
-                     {
-                        display_board(clients[i].game);
-                     }
-
-                     for (int j = 0; j < actual; j++)
-                     {
-                        if (clients[j].game == clients[i].game && clients[j].etat == Observateur && clients[j].game->game_over != 1)
+                        // Vérifier si la conversion est invalide ou hors limites
+                        if (endptr == buffer || *endptr != '\0' || player_index < 0 || player_index >= actual || player_index == i)
                         {
-                           display_board_Observateur(&clients[j]);
+                           write_client(clients[i].sock, "\nNuméro de partie invalide");
                         }
-                        if (clients[j].game == clients[i].game && clients[j].etat == Observateur && clients[j].game->game_over == 1)
+                        else if (clients[i].game == NULL) // A verifier en cas de pepin
                         {
-                           write_client(clients[j].sock, "La partie est terminée.\nVeuillez choisir une option :\n1. Jouer contre un adversaire en ligne\n2.Observer une partie\n3. Quitter le jeu");
+                           if (clients[player_index].etat == EnPartie)
+                           {
+
+                              clients[i].game = clients[player_index].game;
+                              display_board_Observateur(&clients[i]);
+                           }
+                           else
+                           {
+                              write_client(clients[i].sock, "\nLa partie choisie n'est plus en cours\nVeuillez chosir une autre partie");
+                              listParties(clients, i, &actual);
+                           }
+                        }
+                     }
+                     else if (clients[i].etat == DemandeDePartie)
+                     {
+                        char *endptr;
+                        int opponent_index = strtol(buffer, &endptr, 10);
+
+                        // Vérifier si la conversion est invalide
+                        if (endptr == buffer || *endptr != '\0')
+                        {
+                           write_client(clients[i].sock, "\nNuméro de joueur invalide");
+                        }
+                        else if (opponent_index < 0 || opponent_index >= actual || opponent_index == i)
+                        {
+                           write_client(clients[i].sock, "\nNuméro de joueur invalide");
+                        }
+                        else
+                        {
+                           if ((clients[opponent_index].etat != EnPartie) && (clients[opponent_index].etat != EnvoieReponse))
+                           {
+                              char message[256];
+                              snprintf(message, sizeof(message), "\nDemande de partie de %s\nVeuillez répondre par Y ou N", clients[i].name);
+                              write_client(clients[opponent_index].sock, message);
+                              clients[opponent_index].etat = EnvoieReponse;
+                              clients[i].opponent = &clients[opponent_index];
+                              clients[opponent_index].opponent = &clients[i];
+                           }
+                           else
+                           {
+                              write_client(clients[i].sock, "\nLe joueur choisi est déjà en partie\nVeuillez chosir un autre joueur");
+                              listClients(clients, i, &actual);
+                           }
+                        }
+                     }
+                     else if (clients[i].etat == EnvoieReponse)
+                     {
+                        if (strcmp(buffer, "Y") == 0)
+                        {
+                           write_client(clients[i].sock, "\nVous avez accepté la demande de partie\n");
+                           write_client(clients[i].opponent->sock, "\nVotre demande de partie a été acceptée\n");
+                           start_game(&clients[i], clients[i].opponent);
+                        }
+                        else if (strcmp(buffer, "N") == 0)
+                        {
+                           write_client(clients[i].sock, "\nVous avez refusé la demande de partie\n");
+                           write_client(clients[i].opponent->sock, "\nVotre demande de partie a été refusée\n");
+                           clients[i].etat = Initialisation;
+                           clients[i].opponent->etat = Initialisation;
+                        }
+                        else
+                        {
+                           write_client(clients[i].sock, "\nVeuillez répondre par Y ou N");
+                        }
+                     }
+                     else if (clients[i].etat == EnPartie && clients[i].tour == yes && clients[i].game->game_over != 1)
+                     {
+                        printf("Client %s joue\n", clients[i].name);
+                        fflush(stdout);
+                        jouerCoup(clients[i].game, buffer);
+
+                        if (clients[i].game->game_over != 1)
+                        {
+                           display_board(clients[i].game);
+                        }
+
+                        for (int j = 0; j < actual; j++)
+                        {
+                           if (clients[j].game == clients[i].game && clients[j].etat == Observateur && clients[j].game->game_over != 1)
+                           {
+                              display_board_Observateur(&clients[j]);
+                           }
+                           if (clients[j].game == clients[i].game && clients[j].etat == Observateur && clients[j].game->game_over == 1)
+                           {
+                              write_client(clients[j].sock, "La partie est terminée.\nVeuillez choisir une option :\n1. Jouer contre un adversaire en ligne\n2.Observer une partie\n3. Quitter le jeu");
+                           }
                         }
                      }
                   }
@@ -319,27 +356,6 @@ void remove_client(Client *clients, int to_remove, int *actual)
    memmove(clients + to_remove, clients + to_remove + 1, (*actual - to_remove - 1) * sizeof(Client));
    /* number client - 1 */
    (*actual)--;
-}
-
-void send_message_to_all_clients(Client *clients, Client sender, int actual, const char *buffer, char from_server)
-{
-   int i = 0;
-   char message[BUF_SIZE];
-   message[0] = 0;
-   for (i = 0; i < actual; i++)
-   {
-      /* we don't send message to the sender */
-      if (sender.sock != clients[i].sock)
-      {
-         if (from_server == 0)
-         {
-            strncpy(message, sender.name, BUF_SIZE - 1);
-            strncat(message, " : ", sizeof message - strlen(message) - 1);
-         }
-         strncat(message, buffer, sizeof message - strlen(message) - 1);
-         write_client(clients[i].sock, message);
-      }
-   }
 }
 
 int init_connection(void)
@@ -676,4 +692,42 @@ void listParties(Client *clients, int index, int *actual)
       free(listname[k]);
    }
    free(listname);
+}
+
+int send_message_to_client_by_name(Client *clients, int actual, const char *sender_name, const char *target_name, const char *message)
+{
+   for (int i = 0; i < actual; i++)
+   {
+      if (strcmp(clients[i].name, target_name) == 0)
+      {
+         char full_message[BUF_SIZE];
+         snprintf(full_message, sizeof(full_message), "[Message privé de %s] : %s", sender_name, message);
+         write_client(clients[i].sock, full_message);
+
+         // Confirmation à l'expéditeur
+         char confirm_message[BUF_SIZE];
+         snprintf(confirm_message, sizeof(confirm_message), "[Message envoyé à %s] : %s", target_name, message);
+         for (int j = 0; j < actual; j++)
+         {
+            if (strcmp(clients[j].name, sender_name) == 0)
+            {
+               write_client(clients[j].sock, confirm_message);
+               break;
+            }
+         }
+         return 1;
+      }
+   }
+   return 0;
+}
+
+void send_message_to_all_clients(Client *clients, const char *sender_name, int actual, const char *message)
+{
+   char full_message[BUF_SIZE];
+   snprintf(full_message, sizeof(full_message), "[Message global de %s] : %s", sender_name, message);
+
+   for (int i = 0; i < actual; i++)
+   {
+      write_client(clients[i].sock, full_message);
+   }
 }
