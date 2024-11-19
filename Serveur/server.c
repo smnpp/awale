@@ -266,10 +266,14 @@ void app(void)
                      printf("Client %s joue\n", clients[i].name);
                      fflush(stdout);
                      jouerCoup(clients[i].game, buffer);
-                     display_board(clients[i].game);
+                     if (clients[i].game->game_over != 1)
+                     {
+                        display_board(clients[i].game);
+                     }
+
                      for (int j = 0; j < actual; j++)
                      {
-                        if (clients[j].game == clients[i].game && clients[j].etat == Observateur)
+                        if (clients[j].game == clients[i].game && clients[j].etat == Observateur && clients[j].game->game_over != 1)
                         {
                            display_board_Observateur(&clients[j]);
                         }
