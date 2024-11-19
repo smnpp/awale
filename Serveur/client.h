@@ -2,6 +2,9 @@
 #define CLIENT_H
 
 #include "server.h"
+
+#define MAX_FRIENDS 50
+
 enum Etat
 {
    Enattente,
@@ -28,6 +31,8 @@ struct Client
    Client *opponent;     // Pointeur vers un autre Client
    time_t last_activity; // Pour détecter l'inactivité
    int ping_attempts;    // Pour la gestion de la connexion
+   char friends[MAX_FRIENDS][BUF_SIZE];
+   int nb_friends;
 };
 
 #endif /* guard */

@@ -13,6 +13,7 @@
 #include <arpa/inet.h>
 #include <unistd.h> /* close */
 #include <netdb.h>  /* gethostbyname */
+#include "../3rdparty/cJSON/cJSON.h"
 #define INVALID_SOCKET -1
 #define SOCKET_ERROR -1
 #define closesocket(s) close(s)
@@ -46,6 +47,9 @@ typedef struct in_addr IN_ADDR;
 #define CMD_LOGOUT "/logout"
 #define CMD_WRITEBIO "/writebio"
 #define CMD_READBIO "/readbio"
+#define CMD_ADD_FRIEND "/addfriend"
+#define CMD_REMOVE_FRIEND "/removefriend"
+#define CMD_LIST_FRIENDS "/friends"
 
 #include "client.h"
 #include "../game.h"
@@ -71,4 +75,10 @@ void send_message_to_all_clients(Client *clients, const char *sender_name, int a
 void send_notification(Client *client, const char *format);
 void display_help(Client *client);
 void process_command(Client *client, char *buffer, Client *clients, int *actual);
+cJSON *load_friends_json(void);
+void load_friends_from_json(Client *client);
+void save_friends_json(cJSON *root);
+void add_friend(Client *client, const char *friend_name);
+void remove_friend(Client *client, const char *friend_name);
+void list_friends(Client *client);
 #endif /* guard */

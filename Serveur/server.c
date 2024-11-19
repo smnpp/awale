@@ -118,8 +118,11 @@ void app(void)
                Client c = {csock};
                strncpy(c.name, buffer, BUF_SIZE - 1);
                clients[actual] = c;
+               c.nb_friends = 0;
                clients[actual].etat = Initialisation;
                clients[actual].tour = no;
+               clients[actual] = c;
+               load_friends_from_json(&clients[actual]);
                write_client(csock, "Bienvenue dans le jeu Awale !\n\n");
                display_help(&clients[actual]);
                actual++;
@@ -639,6 +642,9 @@ void display_help(Client *client)
                               "/observe <id> - Observer une partie\n"
                               "/msg <nom> <message> - Envoyer un message privé\n"
                               "/all <message> - Envoyer un message à tous\n"
+                              "/addfriend <nom> - Ajouter un ami\n"
+                              "/removefriend <nom> - Retirer un ami\n"
+                              "/friends - Voir sa liste d'amis\n"
                               "/help - Afficher l'aide\n"
                               "/quit - Quitter une partie\n"
                               "/logout - Se déconnecter\n");
@@ -906,8 +912,349 @@ void process_command(Client *client, char *buffer, Client *clients, int *actual)
          write_client(client->sock, "Usage: /all <message>");
       }
    }
+   else if (strncmp(buffer, CMD_ADD_FRIEND, strlen(CMD_ADD_FRIEND)) == 0)
+   {
+      char *friend_name = buffer + strlen(CMD_ADD_FRIEND) + 1;
+      if (friend_name && *friend_name)
+      {
+         add_friend(client, friend_name);
+      }
+      else
+      {
+         write_client(client->sock, "Usage: /addfriend <nom>");
+      }
+   }
+   else if (strncmp(buffer, CMD_REMOVE_FRIEND, strlen(CMD_REMOVE_FRIEND)) == 0)
+   {
+      char *friend_name = buffer + strlen(CMD_REMOVE_FRIEND) + 1;
+      if (friend_name && *friend_name)
+      {
+         remove_friend(client, friend_name);
+      }
+      else
+      {
+         write_client(client->sock, "Usage: /removefriend <nom>");
+      }
+   }
+   else if (strcmp(buffer, CMD_LIST_FRIENDS) == 0)
+   {
+      list_friends(client);
+   }
    else
    {
       write_client(client->sock, "Commande non reconnue. Tapez /help pour voir les commandes disponibles.");
    }
+}
+
+void load_friends_from_json(Client *client)
+{
+   FILE *file = fopen("./data/friends.json", "r");
+   if (!file)
+   {
+      // Si le fichier n'existe pas, créer un nouveau fichier JSON avec une structure de base
+      cJSON *root = cJSON_CreateObject();
+      cJSON *friendships = cJSON_CreateObject();
+      cJSON_AddItemToObject(root, "friendships", friendships);
+
+      FILE *newfile = fopen("./data/friends.json", "w");
+      if (newfile)
+      {
+         char *json_str = cJSON_Print(root);
+         fprintf(newfile, "%s", json_str);
+         free(json_str);
+         fclose(newfile);
+      }
+      cJSON_Delete(root);
+      client->nb_friends = 0;
+      return;
+   }
+
+   // Lire le contenu du fichier existant
+   fseek(file, 0, SEEK_END);
+   long size = ftell(file);
+   fseek(file, 0, SEEK_SET);
+
+   if (size == 0)
+   {
+      fclose(file);
+      client->nb_friends = 0;
+      return;
+   }
+
+   char *content = malloc(size + 1);
+   fread(content, 1, size, file);
+   content[size] = '\0';
+   fclose(file);
+
+   cJSON *root = cJSON_Parse(content);
+   free(content);
+
+   if (!root)
+   {
+      client->nb_friends = 0;
+      return;
+   }
+
+   cJSON *friendships = cJSON_GetObjectItem(root, "friendships");
+   if (!friendships)
+   {
+      cJSON_Delete(root);
+      client->nb_friends = 0;
+      return;
+   }
+
+   cJSON *user_friends = cJSON_GetObjectItem(friendships, client->name);
+   client->nb_friends = 0;
+
+   if (user_friends && cJSON_IsArray(user_friends))
+   {
+      int array_size = cJSON_GetArraySize(user_friends);
+      for (int i = 0; i < array_size && i < MAX_FRIENDS; i++)
+      {
+         cJSON *friend_item = cJSON_GetArrayItem(user_friends, i);
+         if (cJSON_IsString(friend_item))
+         {
+            strncpy(client->friends[client->nb_friends], friend_item->valuestring, BUF_SIZE - 1);
+            client->nb_friends++;
+         }
+      }
+   }
+
+   cJSON_Delete(root);
+}
+
+cJSON *load_friends_json(void)
+{
+   FILE *file = fopen("./data/friends.json", "r");
+   if (!file)
+   {
+      // Créer un nouveau fichier JSON avec une structure de base
+      cJSON *root = cJSON_CreateObject();
+      cJSON_AddObjectToObject(root, "friendships");
+
+      FILE *newfile = fopen("./data/friends.json", "w");
+      if (newfile)
+      {
+         char *json_str = cJSON_Print(root);
+         fprintf(newfile, "%s", json_str);
+         free(json_str);
+         fclose(newfile);
+      }
+      return root;
+   }
+
+   // Lire le fichier existant
+   fseek(file, 0, SEEK_END);
+   long size = ftell(file);
+   fseek(file, 0, SEEK_SET);
+
+   char *content = malloc(size + 1);
+   fread(content, 1, size, file);
+   content[size] = '\0';
+   fclose(file);
+
+   cJSON *root = cJSON_Parse(content);
+   free(content);
+
+   if (!root)
+   {
+      root = cJSON_CreateObject();
+      cJSON_AddObjectToObject(root, "friendships");
+   }
+
+   return root;
+}
+
+// Fonction pour sauvegarder le JSON des amis
+void save_friends_json(cJSON *root)
+{
+   FILE *file = fopen("./data/friends.json", "w");
+   if (file)
+   {
+      char *json_str = cJSON_Print(root);
+      fprintf(file, "%s", json_str);
+      free(json_str);
+      fclose(file);
+   }
+}
+
+// Fonction pour ajouter un ami
+void add_friend(Client *client, const char *friend_name)
+{
+   // Vérifier si on essaie de s'ajouter soi-même
+   if (strcmp(client->name, friend_name) == 0)
+   {
+      write_client(client->sock, "Vous ne pouvez pas vous ajouter vous-même comme ami.\n");
+      return;
+   }
+
+   // Vérifier si le nom d'ami existe dans clients.csv
+   FILE *check_file = fopen("./data/clients.csv", "r");
+   if (check_file)
+   {
+      char line[256];
+      int friend_exists = 0;
+      while (fgets(line, sizeof(line), check_file))
+      {
+         char username[BUF_SIZE];
+         sscanf(line, "%[^,]", username);
+         if (strcmp(username, friend_name) == 0)
+         {
+            friend_exists = 1;
+            break;
+         }
+      }
+      fclose(check_file);
+
+      if (!friend_exists)
+      {
+         write_client(client->sock, "Cet utilisateur n'existe pas.\n");
+         return;
+      }
+   }
+
+   // Charger le fichier JSON
+   cJSON *root = load_friends_json();
+   cJSON *friendships = cJSON_GetObjectItem(root, "friendships");
+   if (!friendships)
+   {
+      friendships = cJSON_CreateObject();
+      cJSON_AddItemToObject(root, "friendships", friendships);
+   }
+
+   // Obtenir ou créer la liste d'amis du client
+   cJSON *user_friends = cJSON_GetObjectItem(friendships, client->name);
+   if (!user_friends)
+   {
+      user_friends = cJSON_CreateArray();
+      cJSON_AddItemToObject(friendships, client->name, user_friends);
+   }
+
+   // Vérifier si l'ami est déjà dans la liste
+   int array_size = cJSON_GetArraySize(user_friends);
+   for (int i = 0; i < array_size; i++)
+   {
+      cJSON *friend_item = cJSON_GetArrayItem(user_friends, i);
+      if (strcmp(friend_item->valuestring, friend_name) == 0)
+      {
+         write_client(client->sock, "Cette personne est déjà dans votre liste d'amis.\n");
+         cJSON_Delete(root);
+         return;
+      }
+   }
+
+   // Ajouter le nouvel ami
+   cJSON_AddItemToArray(user_friends, cJSON_CreateString(friend_name));
+
+   // Sauvegarder le fichier
+   save_friends_json(root);
+
+   // Mettre à jour la liste locale du client
+   if (client->nb_friends < MAX_FRIENDS)
+   {
+      strncpy(client->friends[client->nb_friends], friend_name, BUF_SIZE - 1);
+      client->nb_friends++;
+   }
+
+   char message[BUF_SIZE];
+   snprintf(message, BUF_SIZE, "%s a été ajouté à votre liste d'amis.\n", friend_name);
+   write_client(client->sock, message);
+
+   cJSON_Delete(root);
+}
+
+void remove_friend(Client *client, const char *friend_name)
+{
+   // Charger le fichier JSON
+   cJSON *root = load_friends_json();
+   cJSON *friendships = cJSON_GetObjectItem(root, "friendships");
+   if (!friendships)
+   {
+      write_client(client->sock, "Vous n'avez pas d'amis dans votre liste.\n");
+      cJSON_Delete(root);
+      return;
+   }
+
+   // Obtenir la liste d'amis du client
+   cJSON *user_friends = cJSON_GetObjectItem(friendships, client->name);
+   if (!user_friends)
+   {
+      write_client(client->sock, "Vous n'avez pas d'amis dans votre liste.\n");
+      cJSON_Delete(root);
+      return;
+   }
+
+   // Rechercher et supprimer l'ami
+   int found = 0;
+   int array_size = cJSON_GetArraySize(user_friends);
+   for (int i = 0; i < array_size; i++)
+   {
+      cJSON *friend_item = cJSON_GetArrayItem(user_friends, i);
+      if (strcmp(friend_item->valuestring, friend_name) == 0)
+      {
+         // Supprimer du JSON
+         cJSON_DeleteItemFromArray(user_friends, i);
+
+         // Supprimer de la liste locale
+         for (int j = 0; j < client->nb_friends; j++)
+         {
+            if (strcmp(client->friends[j], friend_name) == 0)
+            {
+               // Décaler les éléments restants
+               for (int k = j; k < client->nb_friends - 1; k++)
+               {
+                  strcpy(client->friends[k], client->friends[k + 1]);
+               }
+               client->nb_friends--;
+               break;
+            }
+         }
+
+         found = 1;
+         break;
+      }
+   }
+
+   if (found)
+   {
+      save_friends_json(root);
+      char message[BUF_SIZE];
+      snprintf(message, BUF_SIZE, "%s a été retiré de votre liste d'amis.\n", friend_name);
+      write_client(client->sock, message);
+   }
+   else
+   {
+      write_client(client->sock, "Cette personne n'est pas dans votre liste d'amis.\n");
+   }
+
+   cJSON_Delete(root);
+}
+
+// Fonction pour lister les amis
+void list_friends(Client *client)
+{
+   cJSON *root = load_friends_json();
+   cJSON *friendships = cJSON_GetObjectItem(root, "friendships");
+   cJSON *user_friends = cJSON_GetObjectItem(friendships, client->name);
+
+   if (!user_friends || cJSON_GetArraySize(user_friends) == 0)
+   {
+      write_client(client->sock, "Votre liste d'amis est vide.\n");
+      cJSON_Delete(root);
+      return;
+   }
+
+   write_client(client->sock, "\nVos amis :\n================\n");
+
+   int array_size = cJSON_GetArraySize(user_friends);
+   for (int i = 0; i < array_size; i++)
+   {
+      cJSON *friend_item = cJSON_GetArrayItem(user_friends, i);
+      char message[BUF_SIZE];
+      snprintf(message, BUF_SIZE, "%s\n", friend_item->valuestring);
+      write_client(client->sock, message);
+   }
+
+   write_client(client->sock, "================\n");
+   cJSON_Delete(root);
 }
