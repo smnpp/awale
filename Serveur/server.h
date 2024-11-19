@@ -43,6 +43,7 @@ typedef struct in_addr IN_ADDR;
 #define CMD_GAMES "/games"
 #define CMD_ACCEPT "/accept"
 #define CMD_DECLINE "/decline"
+#define CMD_LOGOUT "/logout"
 
 #include "client.h"
 #include "../game.h"

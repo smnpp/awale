@@ -158,6 +158,7 @@ void app(void)
                   }
                   deconnecterClient(clients, i, &actual);
                }
+               /*
                else if (clients[i].etat == EnPartie && clients[i].tour == yes)
                {
                   // Si le client est en partie et c'est son tour, traiter le coup
@@ -176,8 +177,8 @@ void app(void)
                         }
                      }
                   }
-               }
-               else if (buffer[0] == '/')
+               }*/
+               else // if (buffer[0] == '/')
                {
                   // Traiter les commandes
                   process_command(&clients[i], buffer, clients, &actual);
@@ -639,7 +640,8 @@ void display_help(Client *client)
                               "/msg <nom> <message> - Envoyer un message privé\n"
                               "/all <message> - Envoyer un message à tous\n"
                               "/help - Afficher l'aide\n"
-                              "/quit - Quitter le jeu\n");
+                              "/quit - Quitter une partie\n"
+                              "/logout - Se déconnecter\n");
 }
 
 void send_notification(Client *client, const char *message)
@@ -683,16 +685,52 @@ void display_games_list(Client *clients, Client *current_client, int *actual)
 
 void process_command(Client *client, char *buffer, Client *clients, int *actual)
 {
-   // Commandes disponibles pendant une partie
+   if (strcmp(buffer, CMD_LOGOUT) == 0)
+   {
+
+      write_client(client->sock, "Bonne continuation\n");
+      if (client->etat == EnPartie)
+      {
+         client->opponent->etat = Initialisation;
+         client->opponent->opponent = NULL;
+         client->opponent->game = NULL;
+         client->opponent->tour = no;
+         display_help(client->opponent);
+
+         for (int j = 0; j < *actual; j++)
+         {
+            if (clients[j].game == client->game && clients[j].etat == Observateur)
+            {
+               write_client(clients[j].sock, "La partie a été interrompue\n");
+               display_help(&clients[j]);
+               clients[j].etat = Initialisation;
+            }
+         }
+      }
+
+      deconnecterClient(clients, client->sock - clients[0].sock, actual);
+
+      return;
+   }
    if (client->etat == EnPartie)
    {
+      printf("buffer : %s\n", buffer);
+      fflush(stdout);
       if (strcmp(buffer, CMD_QUIT) == 0)
       {
          // Gérer la déconnexion pendant une partie
          write_client(client->opponent->sock, "Votre adversaire a quitté la partie.\n");
          client->opponent->etat = Initialisation;
-         deconnecterClient(clients, client->sock - clients[0].sock, actual);
+         client->etat = Initialisation;
+         client->opponent->opponent = NULL;
+         client->opponent->game = NULL;
+         client->opponent->tour = no;
+
+         client->game = NULL;
+         // deconnecterClient(clients, client->sock - clients[0].sock, actual);
          display_help(client->opponent);
+         client->opponent = NULL;
+         display_help(client);
          return;
       }
       else if (strncmp(buffer, CMD_MSG, strlen(CMD_MSG)) == 0 ||
@@ -716,12 +754,27 @@ void process_command(Client *client, char *buffer, Client *clients, int *actual)
                send_message_to_all_clients(clients, client->name, *actual, message);
             }
          }
-         return;
+         return; // a quoi il sert le return
       }
       else if (client->tour == yes)
       {
          // Si c'est le tour du joueur, traiter comme un coup de jeu
          jouerCoup(client->game, buffer);
+
+         if (client->game->game_over != 1)
+         {
+            display_board(client->game);
+
+            // Mise à jour des observateurs
+            for (int j = 0; j < *actual; j++)
+            {
+               if (clients[j].game == client->game && clients[j].etat == Observateur)
+               {
+                  display_board_Observateur(&clients[j]);
+               }
+            }
+         }
+
          return;
       }
       else
@@ -806,10 +859,7 @@ void process_command(Client *client, char *buffer, Client *clients, int *actual)
    {
       display_help(client);
    }
-   else if (strcmp(buffer, CMD_QUIT) == 0)
-   {
-      deconnecterClient(clients, client->sock - clients[0].sock, actual);
-   }
+
    else if (strcmp(buffer, CMD_ACCEPT) == 0 && client->etat == EnvoieReponse)
    {
       write_client(client->sock, "Vous avez accepté la partie.\n");

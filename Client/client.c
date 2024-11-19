@@ -28,7 +28,7 @@ static void end(void)
 void handle_sigint(int sig)
 {
    printf("\nDéconnexion propre du serveur...\n");
-   
+
    end_connection(sock); // Ferme la connexion
    exit(EXIT_SUCCESS);   // Quitte le programme
 }
