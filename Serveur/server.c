@@ -204,7 +204,7 @@ void app(void)
                      {
                         write_client(clients[i].sock, "\nNuméro de partie invalide");
                      }
-                     else
+                     else if (clients[i].game == NULL) // A verifier en cas de pepin
                      {
                         if (clients[player_index].etat == EnPartie)
                         {
@@ -292,10 +292,6 @@ void app(void)
                         {
                            write_client(clients[j].sock, "La partie est terminée.\nVeuillez choisir une option :\n1. Jouer contre un adversaire en ligne\n2.Observer une partie\n3. Quitter le jeu");
                         }
-                     }
-                     if (clients[i].game->game_over == 1)
-                     {
-                        free(clients[i].game);
                      }
                   }
                }
