@@ -273,6 +273,14 @@ void app(void)
                         {
                            display_board_Observateur(&clients[j]);
                         }
+                        if (clients[j].game == clients[i].game && clients[j].etat == Observateur && clients[j].game->game_over == 1)
+                        {
+                           write_client(clients[j].sock, "La partie est terminée.\nVeuillez choisir une option :\n1. Jouer contre un adversaire en ligne\n2.Observer une partie\n3. Quitter le jeu");
+                        }
+                     }
+                     if (clients[i].game->game_over == 1)
+                     {
+                        free(clients[i].game);
                      }
                   }
                }
