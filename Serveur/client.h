@@ -25,7 +25,9 @@ struct Client
    enum Etat etat;
    enum Tour tour;
    Game *game;
-   Client *opponent; // Pointeur vers un autre Client
+   Client *opponent;     // Pointeur vers un autre Client
+   time_t last_activity; // Pour détecter l'inactivité
+   int ping_attempts;    // Pour la gestion de la connexion
 };
 
 #endif /* guard */

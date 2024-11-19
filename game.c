@@ -387,9 +387,26 @@ void end_game(Game *game)
 
     game->player1->tour = no;
     game->player2->tour = no;
-
-    write_client(game->player1->sock, "La partie est terminée.\nVeuillez choisir une option :\n1. Jouer contre un adversaire en ligne\n2. Observer une partie\n3. Quitter le jeu");
-    write_client(game->player2->sock, "La partie est terminée.\nVeuillez choisir une option :\n1. Jouer contre un adversaire en ligne\n2. Observer une partie\n3. Quitter le jeu");
+    write_client(game->player1->sock, "La partie est terminée\n\n"
+                                      "Commandes disponibles:\n"
+                                      "/list - Afficher la liste des joueurs connectés\n"
+                                      "/play <nom> - Lancer une partie avec un joueur\n"
+                                      "/games - Voir les parties en cours\n"
+                                      "/observe <id> - Observer une partie\n"
+                                      "/msg <nom> <message> - Envoyer un message privé\n"
+                                      "/all <message> - Envoyer un message à tous\n"
+                                      "/help - Afficher l'aide\n"
+                                      "/quit - Quitter le jeu\n");
+    write_client(game->player2->sock, "La partie est terminée\n\n"
+                                      "Commandes disponibles:\n"
+                                      "/list - Afficher la liste des joueurs connectés\n"
+                                      "/play <nom> - Lancer une partie avec un joueur\n"
+                                      "/games - Voir les parties en cours\n"
+                                      "/observe <id> - Observer une partie\n"
+                                      "/msg <nom> <message> - Envoyer un message privé\n"
+                                      "/all <message> - Envoyer un message à tous\n"
+                                      "/help - Afficher l'aide\n"
+                                      "/quit - Quitter le jeu\n");
 
     printf("La partie est terminée et la mémoire a été libérée.\n");
     fflush(stdout);

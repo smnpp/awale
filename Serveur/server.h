@@ -33,6 +33,17 @@ typedef struct in_addr IN_ADDR;
 
 #define BUF_SIZE 1024
 
+#define CMD_PLAY "/play"
+#define CMD_LIST "/list"
+#define CMD_OBSERVE "/observe"
+#define CMD_HELP "/help"
+#define CMD_QUIT "/quit"
+#define CMD_MSG "/msg"
+#define CMD_ALL "/all"
+#define CMD_GAMES "/games"
+#define CMD_ACCEPT "/accept"
+#define CMD_DECLINE "/decline"
+
 #include "client.h"
 #include "../game.h"
 
@@ -51,9 +62,10 @@ void write_client(SOCKET sock, const char *buffer);
 // static int deconnecterClient(Client *clients, int to_remove, int *actual);
 // static int deconnecterServeur(Client *clients, int to_remove, int *actual);
 void start_game(Client *client1, Client *client2);
-void parse_command(Client *client, const char *command, Client *clients, int actual);
-Client *find_client_by_name(Client *clients, int actual, const char *name);
 void listParties(Client *clients, int index, int *actual);
 int send_message_to_client_by_name(Client *clients, int actual, const char *sender_name, const char *target_name, const char *message);
 void send_message_to_all_clients(Client *clients, const char *sender_name, int actual, const char *message);
+void send_notification(Client *client, const char *format);
+void display_help(Client *client);
+void process_command(Client *client, char *buffer, Client *clients, int *actual);
 #endif /* guard */
