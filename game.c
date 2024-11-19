@@ -212,28 +212,16 @@ void log_game_to_json(Game *game, const char *winner_name, const char *moves)
     free(json_string);
 }
 
-void initialiserGame(Game *game, Client *client1, Client *client2)
+void initialiserGame(Game *game, Client *player1, Client *player2)
 {
-    game->player1 = client1;
-    game->player2 = client2;
+    game->player1 = player1; // player1 est déjà déterminé comme Joueur 1
+    game->player2 = player2; // player2 est déjà déterminé comme Joueur 2
 
-    srand((unsigned int)(time(NULL) ^ (uintptr_t)&game));
-    int random = rand() % 2;
-
-    if (random == 0)
-    {
-        game->current_turn = client1;
-        client1->tour = yes;
-        client2->tour = no;
-        game->jeu.firstPlayer = 1;
-    }
-    else
-    {
-        game->current_turn = client2;
-        client2->tour = yes;
-        client1->tour = no;
-        game->jeu.firstPlayer = 2;
-    }
+    // Le Joueur 1 commence toujours
+    game->current_turn = player1;
+    player1->tour = yes;
+    player2->tour = no;
+    game->jeu.firstPlayer = 1;
 
     strcpy(game->moves, "");
     game->game_over = 0;
@@ -293,7 +281,6 @@ void display_board_Observateur(Client *client)
 
 void jouerCoup(Game *game, char *buffer)
 {
-
     int move = atoi(buffer);
     if (!game)
     {
@@ -306,47 +293,20 @@ void jouerCoup(Game *game, char *buffer)
         fprintf(stderr, "Erreur : tentative de jouer un coup sur une partie terminée.\n");
         return;
     }
-    if (game == NULL)
-    {
-        fprintf(stderr, "Erreur : game est NULL dans jouerCoup.\n");
-        return;
-    }
-    if (game->player1 == NULL)
-    {
-        fprintf(stderr, "Erreur : player1 est NULL dans jouerCoup.\n");
-        return;
-    }
-    if (game->player2 == NULL)
-    {
-        fprintf(stderr, "Erreur : player2 est NULL dans jouerCoup.\n");
-        return;
-    }
-    if (game->current_turn == NULL)
-    {
-        fprintf(stderr, "Erreur : current_turn est NULL dans jouerCoup.\n");
-        return;
-    }
+
+    // Ajuster l'index selon le joueur
     if (game->current_turn == game->player1)
     {
-        move -= 1; // Ajuster l'index
-        printf("on est arrivé ici client 1\n");
-        fflush(stdout);
+        move = move - 1; // Pour le joueur 1 (trous 0-5)
     }
-    else if (game->current_turn == game->player2)
+    else
     {
-        move += 5; // Ajuster l'index
-        printf("on est arrivé ici client 2\n");
-        fflush(stdout);
+        move = move - 1 + 6; // Pour le joueur 2 (trous 6-11)
     }
 
     // Valider le coup
     if (process_move(game, game->current_turn, move, game->moves))
     {
-        // Ajouter le coup au suivi
-        char move_str[16];
-        snprintf(move_str, sizeof(move_str), "%d ", move);
-        strncat(game->moves, move_str, sizeof(game->moves) - strlen(game->moves) - 1);
-
         if (game->game_over)
         {
             end_game(game);
@@ -354,13 +314,13 @@ void jouerCoup(Game *game, char *buffer)
         }
 
         // Alterner les joueurs
-        else if (game->current_turn == game->player1)
+        if (game->current_turn == game->player1)
         {
             game->current_turn = game->player2;
             game->player1->tour = no;
             game->player2->tour = yes;
         }
-        else if (game->current_turn == game->player2)
+        else
         {
             game->current_turn = game->player1;
             game->player2->tour = no;

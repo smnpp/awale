@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdarg.h>
+#include <time.h>
 
 #include "server.h"
 #include "client.h"
@@ -467,14 +468,31 @@ int deconnecterServeur(Client *clients, int i, int *actual)
 
 void start_game(Client *client1, Client *client2)
 {
-   Game *game = create_game(client1, client2);
+   // Déterminer aléatoirement qui sera le joueur 1
+   srand((unsigned int)time(NULL));
+   int random = rand() % 2;
+
+   Game *game;
+   if (random == 0)
+   {
+      game = create_game(client1, client2); // client1 sera joueur 1
+      write_client(client1->sock, "Vous êtes le Joueur 1");
+      write_client(client2->sock, "Vous êtes le Joueur 2");
+   }
+   else
+   {
+      game = create_game(client2, client1); // client2 sera joueur 1
+      write_client(client2->sock, "Vous êtes le Joueur 1");
+      write_client(client1->sock, "Vous êtes le Joueur 2");
+   }
+
    if (game)
    {
       client1->etat = EnPartie;
       client2->etat = EnPartie;
       client1->game = game;
       client2->game = game;
-      initialiserGame(game, client1, client2);
+      initialiserGame(game, random == 0 ? client1 : client2, random == 0 ? client2 : client1);
       display_board(game);
    }
    else
