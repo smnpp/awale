@@ -13,6 +13,8 @@ typedef struct Game
     Client *current_turn;
     char moves[BUF_SIZE];
     int game_over;
+    Client *observers[MAX_CLIENTS];
+    int nb_observers;
 
     Awale jeu; // Plateau de jeu utilisé par les fonctions de awale.c
 } Game;
@@ -27,4 +29,6 @@ void jouerCoup(Game *game, char *buffer);
 void display_board(Game *game);
 void end_game(Game *game);
 void display_board_Observateur(Client *client);
+void add_observer(Game *game, Client *observer);
+void remove_observer(Game *game, Client *observer);
 #endif /* GAME_H */

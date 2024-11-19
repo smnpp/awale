@@ -68,6 +68,8 @@ Game *create_game(Client *client1, Client *client2)
         perror("Erreur d'allocation mémoire pour Game");
         return NULL;
     }
+    game->nb_observers = 0;
+    memset(game->observers, 0, sizeof(Client *) * MAX_CLIENTS);
     return game;
 }
 
@@ -347,27 +349,44 @@ void end_game(Game *game)
 
     game->player1->tour = no;
     game->player2->tour = no;
-    write_client(game->player1->sock, "La partie est terminée\n\n"
-                                      "Commandes disponibles:\n"
-                                      "/list - Afficher la liste des joueurs connectés\n"
-                                      "/play <nom> - Lancer une partie avec un joueur\n"
-                                      "/games - Voir les parties en cours\n"
-                                      "/observe <id> - Observer une partie\n"
-                                      "/msg <nom> <message> - Envoyer un message privé\n"
-                                      "/all <message> - Envoyer un message à tous\n"
-                                      "/help - Afficher l'aide\n"
-                                      "/quit - Quitter le jeu\n");
-    write_client(game->player2->sock, "La partie est terminée\n\n"
-                                      "Commandes disponibles:\n"
-                                      "/list - Afficher la liste des joueurs connectés\n"
-                                      "/play <nom> - Lancer une partie avec un joueur\n"
-                                      "/games - Voir les parties en cours\n"
-                                      "/observe <id> - Observer une partie\n"
-                                      "/msg <nom> <message> - Envoyer un message privé\n"
-                                      "/all <message> - Envoyer un message à tous\n"
-                                      "/help - Afficher l'aide\n"
-                                      "/quit - Quitter le jeu\n");
+    display_help(game->player1);
+    display_help(game->player2);
+
+    for (int i = 0; i < game->nb_observers; i++)
+    {
+        game->observers[i]->etat = Initialisation;
+        display_help(game->observers[i]);
+    }
 
     printf("La partie est terminée et la mémoire a été libérée.\n");
     fflush(stdout);
+}
+
+void add_observer(Game *game, Client *observer)
+{
+    if (game->nb_observers < MAX_CLIENTS)
+    {
+        game->observers[game->nb_observers++] = observer;
+        char message[256];
+        snprintf(message, sizeof(message), "\nL'utilisateur %s observe maintenant votre partie.", observer->name);
+        write_client(game->player1->sock, message);
+        write_client(game->player2->sock, message);
+    }
+}
+
+void remove_observer(Game *game, Client *observer)
+{
+    for (int i = 0; i < game->nb_observers; i++)
+    {
+        if (game->observers[i] == observer)
+        {
+            // Déplacer tous les observateurs suivants d'une position vers le haut
+            for (int j = i; j < game->nb_observers - 1; j++)
+            {
+                game->observers[j] = game->observers[j + 1];
+            }
+            game->nb_observers--;
+            break;
+        }
+    }
 }

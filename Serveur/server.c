@@ -120,16 +120,8 @@ void app(void)
                clients[actual] = c;
                clients[actual].etat = Initialisation;
                clients[actual].tour = no;
-               write_client(csock, "Bienvenue dans le jeu Awale !\n\n"
-                                   "Commandes disponibles:\n"
-                                   "/list - Afficher la liste des joueurs connectés\n"
-                                   "/play <nom> - Lancer une partie avec un joueur\n"
-                                   "/games - Voir les parties en cours\n"
-                                   "/observe <id> - Observer une partie\n"
-                                   "/msg <nom> <message> - Envoyer un message privé\n"
-                                   "/all <message> - Envoyer un message à tous\n"
-                                   "/help - Afficher l'aide\n"
-                                   "/quit - Quitter le jeu\n");
+               write_client(csock, "Bienvenue dans le jeu Awale !\n\n");
+               display_help(&clients[actual]);
                actual++;
             }
          }
@@ -699,8 +691,6 @@ void process_command(Client *client, char *buffer, Client *clients, int *actual)
          // Gérer la déconnexion pendant une partie
          write_client(client->opponent->sock, "Votre adversaire a quitté la partie.\n");
          client->opponent->etat = Initialisation;
-         client->opponent->opponent = NULL;
-         client->opponent->game = NULL;
          deconnecterClient(clients, client->sock - clients[0].sock, actual);
          display_help(client->opponent);
          return;
@@ -793,11 +783,8 @@ void process_command(Client *client, char *buffer, Client *clients, int *actual)
          {
             client->etat = Observateur;
             client->game = clients[game_id].game;
+            add_observer(client->game, client); // Ajouter l'observateur à la liste
             display_board_Observateur(client);
-            char message[256];
-            snprintf(message, sizeof(message), "\nL'utilisateur %s observe maintenant votre partie.", client->name);
-            write_client(clients[game_id].sock, message);
-            write_client(clients[game_id].opponent->sock, message);
          }
          else
          {
