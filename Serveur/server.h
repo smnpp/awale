@@ -51,6 +51,8 @@ typedef struct in_addr IN_ADDR;
 #define CMD_REMOVE_FRIEND "/removefriend"
 #define CMD_LIST_FRIENDS "/friends"
 #define CMD_MATCHMAKING "/matchmaking"
+#define CMD_PRIVATE "/private"
+#define CMD_PUBLIC "/public"
 
 #include "client.h"
 #include "../game.h"
@@ -82,4 +84,5 @@ void save_friends_json(cJSON *root);
 void add_friend(Client *client, const char *friend_name);
 void remove_friend(Client *client, const char *friend_name);
 void list_friends(Client *client);
+bool is_friend(Client *client, const char *friend_name);
 #endif /* guard */

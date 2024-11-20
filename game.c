@@ -227,6 +227,7 @@ void initialiserGame(Game *game, Client *player1, Client *player2)
 
     strcpy(game->moves, "");
     game->game_over = 0;
+    game->private = false;
     initialiserPlateau(&game->jeu);
 }
 

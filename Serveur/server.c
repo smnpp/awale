@@ -654,6 +654,8 @@ void display_help(Client *client)
    write_client(client->sock, "\nCommandes disponibles:\n"
                               "/list - Afficher la liste des joueurs connectés\n"
                               "/play <nom> - Lancer une partie avec un joueur\n"
+                              "/private - Changer le statut de la partie en privée\n"
+                              "/public - Changer le statut de la partie en publique\n"
                               "/games - Voir les parties en cours\n"
                               "/observe <id> - Observer une partie\n"
                               "/msg <nom> <message> - Envoyer un message privé\n"
@@ -784,6 +786,73 @@ void process_command(Client *client, char *buffer, Client *clients, int *actual)
          }
          return; // a quoi il sert le return
       }
+      else if (strcmp(buffer, CMD_PRIVATE) == 0)
+      {
+         if (client->etat == EnPartie)
+         {
+            // Vérifier si la partie est déjà privée
+            if (client->game->private == true)
+            {
+               write_client(client->sock, "La partie est déjà privée.\n");
+               return;
+            }
+
+            // Rendre la partie privée
+            client->game->private = true;
+
+            // Notifier les deux joueurs
+            write_client(client->sock, "La partie est maintenant privée.\n");
+            write_client(client->opponent->sock, "La partie est maintenant privée.\n");
+
+            // Retirer les observateurs qui ne sont pas amis
+            for (int i = 0; i < client->game->nb_observers; i++)
+            {
+               Client *observer = client->game->observers[i];
+               if (!is_friend(client, observer->name) && !is_friend(client->opponent, observer->name))
+               {
+                  // Notifier l'observateur qu'il ne peut plus regarder la partie
+                  write_client(observer->sock, "La partie est devenue privée. Vous ne pouvez plus l'observer.\n");
+                  display_help(observer);
+
+                  // Retirer l'observateur
+                  for (int j = i; j < client->game->nb_observers - 1; j++)
+                  {
+                     client->game->observers[j] = client->game->observers[j + 1];
+                  }
+                  client->game->nb_observers--;
+                  observer->etat = Initialisation;
+                  i--; // Ajuster l'index car nous avons déplacé les éléments
+               }
+            }
+         }
+         else
+         {
+            write_client(client->sock, "Vous devez être en partie pour utiliser cette commande.\n");
+         }
+      }
+      else if (strcmp(buffer, CMD_PUBLIC) == 0)
+      {
+         if (client->etat == EnPartie)
+         {
+            // Vérifier si la partie est déjà privée
+            if (client->game->private == false)
+            {
+               write_client(client->sock, "La partie est déjà publique.\n");
+               return;
+            }
+
+            // Rendre la partie privée
+            client->game->private = false;
+
+            // Notifier les deux joueurs
+            write_client(client->sock, "La partie est maintenant publique.\n");
+            write_client(client->opponent->sock, "La partie est maintenant publique.\n");
+         }
+         else
+         {
+            write_client(client->sock, "Vous devez être en partie pour utiliser cette commande.\n");
+         }
+      }
       else if (client->tour == yes)
       {
          // Si c'est le tour du joueur, traiter comme un coup de jeu
@@ -866,10 +935,24 @@ void process_command(Client *client, char *buffer, Client *clients, int *actual)
          int game_id = atoi(id_str);
          if (game_id >= 0 && game_id < *actual && clients[game_id].etat == EnPartie)
          {
-            client->etat = Observateur;
-            client->game = clients[game_id].game;
-            add_observer(client->game, client); // Ajouter l'observateur à la liste
-            display_board_Observateur(client);
+            if (clients[game_id].game->private == false)
+            {
+               client->etat = Observateur;
+               client->game = clients[game_id].game;
+               add_observer(client->game, client);
+               display_board_Observateur(client);
+            }
+            else if (is_friend(clients[game_id].game->player1, client->name) || is_friend(clients[game_id].game->player2, client->name))
+            {
+               client->etat = Observateur;
+               client->game = clients[game_id].game;
+               add_observer(client->game, client);
+               display_board_Observateur(client);
+            }
+            else
+            {
+               write_client(client->sock, "Vous ne pouvez pas observer cette partie.");
+            }
          }
          else
          {
@@ -962,6 +1045,19 @@ void process_command(Client *client, char *buffer, Client *clients, int *actual)
    }
 }
 
+bool is_friend(Client *client, const char *friend_name)
+{
+   for (int i = 0; i < client->nb_friends; i++)
+   {
+      if (strcmp(client->friends[i], friend_name) == 0)
+      {
+         return true;
+      }
+   }
+   return false;
+}
+
+// Fonction pour charger les amis du client à partir du JSON
 void load_friends_from_json(Client *client)
 {
    FILE *file = fopen("./data/friends.json", "r");
@@ -1039,6 +1135,7 @@ void load_friends_from_json(Client *client)
    cJSON_Delete(root);
 }
 
+// Fonction pour charger le JSON des amis
 cJSON *load_friends_json(void)
 {
    FILE *file = fopen("./data/friends.json", "r");
@@ -1179,6 +1276,7 @@ void add_friend(Client *client, const char *friend_name)
    cJSON_Delete(root);
 }
 
+// Fonction pour retirer un ami
 void remove_friend(Client *client, const char *friend_name)
 {
    // Charger le fichier JSON

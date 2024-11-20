@@ -15,6 +15,7 @@ typedef struct Game
     int game_over;
     Client *observers[MAX_CLIENTS];
     int nb_observers;
+    bool private;
 
     Awale jeu; // Plateau de jeu utilisé par les fonctions de awale.c
 } Game;
