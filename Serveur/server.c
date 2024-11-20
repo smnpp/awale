@@ -126,6 +126,14 @@ void app(void)
                write_client(csock, "Bienvenue dans le jeu Awale !\n\n");
                display_help(&clients[actual]);
                actual++;
+               for (int i = 0; i < actual - 1; i++)
+               {
+                  if (clients[i].etat == Enattente)
+                  {
+                     write_client(clients[i].sock, "Un nouveau joueur s'est connecté");
+                     clients[i].etat = Initialisation;
+                  }
+               }
             }
          }
       }
@@ -134,6 +142,7 @@ void app(void)
          int i = 0;
          for (i = 0; i < actual; i++)
          {
+
             if (FD_ISSET(clients[i].sock, &rdfs))
             {
                int c = read_client(clients[i].sock, buffer);
@@ -607,27 +616,34 @@ void display_players_list(Client *clients, Client *current_client, int *actual)
 {
    write_client(current_client->sock, "\nJoueurs connectés:");
    write_client(current_client->sock, "\n================");
-
-   for (int i = 0; i < *actual; i++)
+   if (*actual == 1)
    {
-      if (strcmp(clients[i].name, current_client->name) != 0)
+      write_client(current_client->sock, "\nAucun autre joueur n'est connecté.");
+      current_client->etat = Enattente;
+   }
+   else
+   {
+      for (int i = 0; i < *actual; i++)
       {
-         char status[32];
-         switch (clients[i].etat)
+         if (strcmp(clients[i].name, current_client->name) != 0)
          {
-         case EnPartie:
-            strcpy(status, "En partie");
-            break;
-         case Observateur:
-            strcpy(status, "Observateur");
-            break;
-         default:
-            strcpy(status, "Disponible");
-         }
+            char status[32];
+            switch (clients[i].etat)
+            {
+            case EnPartie:
+               strcpy(status, "En partie");
+               break;
+            case Observateur:
+               strcpy(status, "Observateur");
+               break;
+            default:
+               strcpy(status, "Disponible");
+            }
 
-         char message[256];
-         snprintf(message, sizeof(message), "\n%s - %s", clients[i].name, status);
-         write_client(current_client->sock, message);
+            char message[256];
+            snprintf(message, sizeof(message), "\n%s - %s", clients[i].name, status);
+            write_client(current_client->sock, message);
+         }
       }
    }
    write_client(current_client->sock, "\n================\n");

@@ -50,6 +50,7 @@ typedef struct in_addr IN_ADDR;
 #define CMD_ADD_FRIEND "/addfriend"
 #define CMD_REMOVE_FRIEND "/removefriend"
 #define CMD_LIST_FRIENDS "/friends"
+#define CMD_MATCHMAKING "/matchmaking"
 
 #include "client.h"
 #include "../game.h"
