@@ -699,16 +699,25 @@ void process_command(Client *client, char *buffer, Client *clients, int *actual)
          client->opponent->game = NULL;
          client->opponent->tour = no;
 
-         client->game = NULL;
          // deconnecterClient(clients, client->sock - clients[0].sock, actual);
          display_help(client->opponent);
-         for (int j = 0; j < client->game->nb_observers; j++)
+         printf("on est rentre pas dans le if\n");
+         fflush(stdout);
+         if (client->game->nb_observers > 0)
          {
+            printf("on est rentrer dans le if\n");
+            fflush(stdout);
+            for (int j = 0; j < client->game->nb_observers; j++)
+            {
 
-            write_client(client->game->observers[j]->sock, "La partie a été interrompue\n");
-            display_help(client->game->observers[j]);
-            client->game->observers[j]->etat = Initialisation;
+               write_client(client->game->observers[j]->sock, "La partie a été interrompue\n");
+               display_help(client->game->observers[j]);
+               client->game->observers[j]->etat = Initialisation;
+            }
          }
+         client->game = NULL;
+         printf("on est apres le if\n");
+         fflush(stdout);
          client->opponent = NULL;
          display_help(client);
 
