@@ -919,6 +919,21 @@ void process_command(Client *client, char *buffer, Client *clients, int *actual)
          write_client(client->sock, "Usage: /play <nom_joueur>");
       }
    }
+   else if (strcmp(buffer, CMD_MATCHMAKING) == 0)
+   {
+      client->etat = Matchmaking;
+      for (int i = 0; i < *actual; i++)
+      {
+         if (strcmp(clients[i].name, client->name) != 0)
+         {
+            if (clients[i].etat == Matchmaking)
+            {
+               start_game(client, &clients[i]);
+               return;
+            }
+         }
+      }
+   }
    else if (strcmp(buffer, CMD_LIST) == 0)
    {
       display_players_list(clients, client, actual);

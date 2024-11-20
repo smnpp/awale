@@ -12,7 +12,8 @@ enum Etat
    EnvoieReponse,
    DemandeDePartie,
    EnPartie,
-   Observateur
+   Observateur,
+   Matchmaking
 };
 enum Tour
 {
