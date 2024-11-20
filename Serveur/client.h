@@ -13,7 +13,8 @@ enum Etat
    DemandeDePartie,
    EnPartie,
    Observateur,
-   Matchmaking
+   Matchmaking,
+   test
 };
 enum Tour
 {

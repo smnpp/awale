@@ -121,15 +121,17 @@ void app(void)
                c.nb_friends = 0;
                clients[actual].etat = Initialisation;
                clients[actual].tour = no;
-               clients[actual] = c;
+
                load_friends_from_json(&clients[actual]);
                write_client(csock, "Bienvenue dans le jeu Awale !\n\n");
                display_help(&clients[actual]);
                actual++;
-               for (int i = 0; i < actual - 1; i++)
+               for (int i = 0; i < (actual - 1); i++)
                {
                   if (clients[i].etat == Enattente)
                   {
+                     printf("on est rentrer dans en attente\n");
+                     fflush(stdout);
                      write_client(clients[i].sock, "Un nouveau joueur s'est connecté");
                      clients[i].etat = Initialisation;
                   }
@@ -616,8 +618,11 @@ void display_players_list(Client *clients, Client *current_client, int *actual)
 {
    write_client(current_client->sock, "\nJoueurs connectés:");
    write_client(current_client->sock, "\n================");
+
    if (*actual == 1)
    {
+      printf("actual : %d\n", *actual);
+      fflush(stdout);
       write_client(current_client->sock, "\nAucun autre joueur n'est connecté.");
       current_client->etat = Enattente;
    }
@@ -928,6 +933,8 @@ void process_command(Client *client, char *buffer, Client *clients, int *actual)
          {
             if (clients[i].etat == Matchmaking)
             {
+               client->opponent = &clients[i];
+               clients[i].opponent = client;
                start_game(client, &clients[i]);
                return;
             }
