@@ -932,7 +932,16 @@ void process_command(Client *client, char *buffer, Client *clients, int *actual)
       char *id_str = buffer + strlen(CMD_OBSERVE) + 1;
       if (id_str && *id_str)
       {
-         int game_id = atoi(id_str);
+         char *endptr;
+         int game_id = strtol(buffer, &endptr, 10);
+
+         // Vérifier si la conversion est invalide
+         if (endptr == buffer || *endptr != '\0')
+         {
+            write_client(client->sock, "ID de partie invalide.");
+            return;
+         }
+
          if (game_id >= 0 && game_id < *actual && clients[game_id].etat == EnPartie)
          {
             if (clients[game_id].game->private == false)
