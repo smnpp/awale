@@ -6,6 +6,8 @@
 #include "awale.h"
 #include "Serveur/server.h"
 
+#define MAX_MOVES 100
+
 typedef struct Game
 {
     Client *player1;
@@ -16,6 +18,8 @@ typedef struct Game
     Client *observers[MAX_CLIENTS];
     int nb_observers;
     bool private;
+    int board_states[MAX_MOVES][TROUS];
+    int nb_states;
 
     Awale jeu; // Plateau de jeu utilisé par les fonctions de awale.c
 } Game;
@@ -32,4 +36,5 @@ void end_game(Game *game);
 void display_board_Observateur(Client *client);
 void add_observer(Game *game, Client *observer);
 void remove_observer(Game *game, Client *observer);
+void store_board_state(Game *game);
 #endif /* GAME_H */

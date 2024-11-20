@@ -25,6 +25,7 @@ int process_move(Game *game, Client *client, int move, char *moves)
     strncat(moves, move_str, sizeof(moves) - strlen(moves) - 1);
 
     distribuerEtCapturer(jeu, move, buffer);
+    store_board_state(game);
 
     // Vérifiez si le jeu est terminé
     if (partieTerminee(jeu, buffer))
@@ -157,11 +158,18 @@ void log_game_to_json(Game *game, const char *winner_name, const char *moves)
     FILE *file = fopen("data/games.json", "r+");
     if (file == NULL)
     {
-        perror("Erreur d'ouverture du fichier JSON");
-        return;
+        file = fopen("data/games.json", "w");
+        if (file == NULL)
+        {
+            perror("Erreur d'ouverture du fichier JSON");
+            return;
+        }
+        fprintf(file, "[]");
+        fclose(file);
+        file = fopen("data/games.json", "r+");
     }
 
-    // Charger le contenu existant (ou créer un tableau vide)
+    // Charger le contenu existant
     fseek(file, 0, SEEK_END);
     long file_size = ftell(file);
     fseek(file, 0, SEEK_SET);
@@ -191,21 +199,37 @@ void log_game_to_json(Game *game, const char *winner_name, const char *moves)
     char timestamp[64];
     strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", t);
 
+    cJSON *boards = cJSON_CreateArray();
+
+    // Ajouter tous les états stockés
+    for (int state = 0; state < game->nb_states; state++)
+    {
+        cJSON *board_state = cJSON_CreateArray();
+        for (int i = 0; i < TROUS; i++)
+        {
+            cJSON_AddItemToArray(board_state, cJSON_CreateNumber(game->board_states[state][i]));
+        }
+        cJSON_AddItemToArray(boards, board_state);
+    }
+
     // Ajouter les informations de la partie
     cJSON_AddNumberToObject(game_obj, "id", get_next_game_id());
     cJSON_AddStringToObject(game_obj, "date", timestamp);
     cJSON_AddStringToObject(game_obj, "player1", game->player1->name);
     cJSON_AddStringToObject(game_obj, "player2", game->player2->name);
-    cJSON_AddStringToObject(game_obj, "first_player", game->current_turn == game->player1 ? game->player1->name : game->player2->name);
     cJSON_AddStringToObject(game_obj, "winner", winner_name);
-    cJSON_AddStringToObject(game_obj, "moves", moves);
+    cJSON_AddItemToObject(game_obj, "boards", boards);
+
+    // Ajouter les scores finaux
+    cJSON_AddNumberToObject(game_obj, "score1", game->jeu.scoreJoueur1);
+    cJSON_AddNumberToObject(game_obj, "score2", game->jeu.scoreJoueur2);
 
     // Ajouter l'objet au tableau
     cJSON_AddItemToArray(game_array, game_obj);
 
     // Sauvegarder dans le fichier
     char *json_string = cJSON_Print(game_array);
-    freopen("data/games.json", "w", file); // Réouvrir en mode écriture
+    freopen("data/games.json", "w", file);
     fprintf(file, "%s", json_string);
     fclose(file);
 
@@ -226,9 +250,26 @@ void initialiserGame(Game *game, Client *player1, Client *player2)
     game->jeu.firstPlayer = 1;
 
     strcpy(game->moves, "");
+    for (int i = 0; i < TROUS; i++)
+    {
+        game->board_states[0][i] = 4; // État initial : 4 graines par trou
+    }
+    game->nb_states = 1;
     game->game_over = 0;
     game->private = false;
     initialiserPlateau(&game->jeu);
+}
+
+void store_board_state(Game *game)
+{
+    if (game->nb_states < MAX_MOVES)
+    {
+        for (int i = 0; i < TROUS; i++)
+        {
+            game->board_states[game->nb_states][i] = game->jeu.trous[i];
+        }
+        game->nb_states++;
+    }
 }
 
 void display_board(Game *game)
