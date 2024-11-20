@@ -85,4 +85,6 @@ void add_friend(Client *client, const char *friend_name);
 void remove_friend(Client *client, const char *friend_name);
 void list_friends(Client *client);
 bool is_friend(Client *client, const char *friend_name);
+void write_bio(Client *client, const char *bio);
+void read_bio(Client *client, Client *clients, int actual, const char *target_name);
 #endif /* guard */

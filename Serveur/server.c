@@ -1032,6 +1032,30 @@ void process_command(Client *client, char *buffer, Client *clients, int *actual)
          write_client(client->sock, "Usage: /addfriend <nom>");
       }
    }
+   else if (strncmp(buffer, CMD_WRITEBIO, strlen(CMD_WRITEBIO)) == 0)
+   {
+      char *bio = buffer + strlen(CMD_WRITEBIO) + 1;
+      if (bio && *bio)
+      {
+         write_bio(client, bio);
+      }
+      else
+      {
+         write_client(client->sock, "Usage: /writebio <votre biographie>");
+      }
+   }
+   else if (strncmp(buffer, CMD_READBIO, strlen(CMD_READBIO)) == 0)
+   {
+      char *target = buffer + strlen(CMD_READBIO) + 1;
+      if (target && *target)
+      {
+         read_bio(client, clients, *actual, target);
+      }
+      else
+      {
+         write_client(client->sock, "Usage: /readbio <nom_joueur>");
+      }
+   }
    else if (strncmp(buffer, CMD_REMOVE_FRIEND, strlen(CMD_REMOVE_FRIEND)) == 0)
    {
       char *friend_name = buffer + strlen(CMD_REMOVE_FRIEND) + 1;
@@ -1139,6 +1163,25 @@ void load_friends_from_json(Client *client)
             client->nb_friends++;
          }
       }
+   }
+
+   cJSON *bios = cJSON_GetObjectItem(root, "bios");
+   if (bios)
+   {
+      cJSON *bio = cJSON_GetObjectItem(bios, client->name);
+      if (bio && cJSON_IsString(bio))
+      {
+         strncpy(client->bio, bio->valuestring, BUF_SIZE - 1);
+         client->bio[BUF_SIZE - 1] = '\0';
+      }
+      else
+      {
+         strcpy(client->bio, "Pas de biographie");
+      }
+   }
+   else
+   {
+      strcpy(client->bio, "Pas de biographie");
    }
 
    cJSON_Delete(root);
@@ -1380,4 +1423,49 @@ void list_friends(Client *client)
 
    write_client(client->sock, "================\n");
    cJSON_Delete(root);
+}
+
+void write_bio(Client *client, const char *new_bio)
+{
+   // Charger le fichier JSON existant
+   cJSON *root = load_friends_json();
+
+   // Ajouter une nouvelle section "bios" si elle n'existe pas
+   cJSON *bios = cJSON_GetObjectItem(root, "bios");
+   if (!bios)
+   {
+      bios = cJSON_CreateObject();
+      cJSON_AddItemToObject(root, "bios", bios);
+   }
+
+   // Mettre à jour ou ajouter la bio
+   cJSON_DeleteItemFromObject(bios, client->name);
+   cJSON_AddStringToObject(bios, client->name, new_bio);
+
+   // Sauvegarder le fichier
+   save_friends_json(root);
+
+   // Mettre à jour la bio locale du client
+   strncpy(client->bio, new_bio, BUF_SIZE - 1);
+   client->bio[BUF_SIZE - 1] = '\0';
+
+   write_client(client->sock, "Votre biographie a été mise à jour.\n");
+
+   cJSON_Delete(root);
+}
+
+void read_bio(Client *client, Client *clients, int actual, const char *target_name)
+{
+   for (int i = 0; i < actual; i++)
+   {
+      if (strcmp(clients[i].name, target_name) == 0)
+      {
+         char message[BUF_SIZE * 2];
+         snprintf(message, sizeof(message), "\nBiographie de %s:\n================\n%s\n================\n",
+                  target_name, clients[i].bio);
+         write_client(client->sock, message);
+         return;
+      }
+   }
+   write_client(client->sock, "Utilisateur non trouvé.\n");
 }

@@ -33,6 +33,7 @@ struct Client
    int ping_attempts;    // Pour la gestion de la connexion
    char friends[MAX_FRIENDS][BUF_SIZE];
    int nb_friends;
+   char bio[BUF_SIZE];
 };
 
 #endif /* guard */

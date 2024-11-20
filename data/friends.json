@@ -1,5 +1,9 @@
 {
-    "friendships": {
-        "simon": ["jassir", "paul"]
-    }
+	"friendships":	{
+		"simon":	["jassir", "paul"]
+	},
+	"bios":	{
+		"paul":	"salut c'est ma bio",
+		"jassir":	"aller l'ol"
+	}
 }
