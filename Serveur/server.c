@@ -11,7 +11,7 @@
 
 // DECLARATION DES FONCTIONS UTILISEES SEULEMENT DANS CE FICHIER
 int init_connection(void);
-int inscrireClient(const char *name);
+int inscrireClient(const char *name, Client *clients, int *actual);
 int deconnecterClient(Client *clients, int i, int *actual);
 int listClients(Client clients[], int index, int *actual);
 void clear_clients(Client *clients, int actual);
@@ -95,7 +95,7 @@ void app(void)
          /* after connecting the client sends its name */
          if (read_client(csock, buffer) > 0)
          {
-            int result = inscrireClient(buffer);
+            int result = inscrireClient(buffer, clients, &actual);
 
             if (result == 2)
             {
@@ -294,10 +294,19 @@ int main(int argc, char **argv)
    return EXIT_SUCCESS;
 }
 
-int inscrireClient(const char *name)
+int inscrireClient(const char *name, Client *clients, int *actual)
 {
    printf("Inscription du client %s\n", name);
    fflush(stdout);
+   for (int i = 0; i < *actual; i++)
+   {
+      if (strcmp(clients[i].name, name) == 0)
+      {
+         printf("Client %s déjà connecté\n", name);
+         fflush(stdout);
+         return 2;
+      }
+   }
    FILE *fichier = fopen("./data/clients.csv", "r+");
 
    FILE *tempFile = fopen("./data/temp.csv", "w");
@@ -309,21 +318,14 @@ int inscrireClient(const char *name)
    char name_used[256];
    snprintf(name_used, sizeof(name_used), "%s,", name);
    char line[256];
-   int clientExists = 0, clientConnected = 0;
+   int clientExists = 0;
+
    while (fgets(line, sizeof(line), fichier))
    {
       if (strstr(line, name_used))
       {
 
          clientExists = 1;
-         if (strstr(line, "+"))
-         {
-            clientConnected = 1;
-         }
-         else
-         {
-            fprintf(tempFile, "%s, +\n", name);
-         }
       }
       else
       {
@@ -333,16 +335,7 @@ int inscrireClient(const char *name)
 
    if (!clientExists)
    {
-      fprintf(tempFile, "%s, +\n", name);
-   }
-   else if (clientConnected)
-   {
-      printf("Client %s déjà connecté\n", name);
-      fflush(stdout);
-      fclose(fichier);
-      fclose(tempFile);
-      remove("./data/temp.csv");
-      return 2;
+      fprintf(tempFile, "%s,\n", name);
    }
 
    fclose(fichier);
@@ -405,31 +398,6 @@ int listClients(Client clients[], int index, int *actual)
 int deconnecterClient(Client *clients, int i, int *actual)
 {
 
-   FILE *fichier = fopen("./data/clients.csv", "r+");
-   FILE *tempFile = fopen("./data/tempD.csv", "w");
-   if (!fichier)
-   {
-      perror("Erreur d'ouverture des fichiers");
-      return -1;
-   }
-   char line[256];
-   char name_used[256];
-   snprintf(name_used, sizeof(name_used), "%s,", clients[i].name);
-   while (fgets(line, sizeof(line), fichier))
-   {
-      if (strstr(line, name_used))
-      {
-         fprintf(tempFile, "%s, -\n", clients[i].name);
-      }
-      else
-      {
-         fputs(line, tempFile);
-      }
-   }
-   fclose(fichier);
-   fclose(tempFile);
-   rename("./data/tempD.csv", "./data/clients.csv");
-
    printf("Joueur %s déconnecté\n", clients[i].name);
    fflush(stdout);
    closesocket(clients[i].sock);
@@ -440,34 +408,6 @@ int deconnecterClient(Client *clients, int i, int *actual)
 
 int deconnecterServeur(Client *clients, int i, int *actual)
 {
-
-   FILE *fichier = fopen("./data/clients.csv", "r+");
-   FILE *tempFile = fopen("./data/tempD.csv", "w");
-   if (!fichier)
-   {
-      perror("Erreur d'ouverture des fichiers");
-      return -1;
-   }
-   char line[256];
-   char name_used[256];
-   snprintf(name_used, sizeof(name_used), "%s,", clients[i].name);
-   while (fgets(line, sizeof(line), fichier))
-   {
-      if (strstr(line, name_used))
-      {
-         fprintf(tempFile, "%s, -\n", clients[i].name);
-      }
-      else
-      {
-         fputs(line, tempFile);
-      }
-   }
-   fclose(fichier);
-   fclose(tempFile);
-   rename("./data/tempD.csv", "./data/clients.csv");
-
-   printf("Joueur %s déconnecté\n", clients[i].name);
-   fflush(stdout);
 
    closesocket(clients[i].sock);
    return 1;
@@ -724,6 +664,7 @@ void process_command(Client *client, char *buffer, Client *clients, int *actual)
          client->opponent->opponent = NULL;
          client->opponent->game = NULL;
          client->opponent->tour = no;
+         write_client(client->opponent->sock, "Votre adversaire a quitté la partie.\n");
          display_help(client->opponent);
 
          for (int j = 0; j < client->game->nb_observers; j++)
@@ -895,6 +836,11 @@ void process_command(Client *client, char *buffer, Client *clients, int *actual)
       char *target = buffer + strlen(CMD_PLAY) + 1;
       if (target && *target)
       {
+         if (strcmp(client->name, target) == 0)
+         {
+            write_client(client->sock, "Vous ne pouvez pas jouer contre vous-même.");
+            return;
+         }
          for (int i = 0; i < *actual; i++)
          {
             if (strcmp(clients[i].name, target) == 0)
@@ -955,7 +901,7 @@ void process_command(Client *client, char *buffer, Client *clients, int *actual)
       if (id_str && *id_str)
       {
          char *endptr;
-         int game_id = strtol(buffer, &endptr, 10);
+         int game_id = strtol(id_str, &endptr, 10);
 
          // Vérifier si la conversion est invalide
          if (endptr == buffer || *endptr != '\0')
