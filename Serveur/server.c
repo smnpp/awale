@@ -923,31 +923,37 @@ void process_command(Client *client, char *buffer, Client *clients, int *actual)
             write_client(client->sock, "ID de partie invalide.");
             return;
          }
-
-         if (game_id >= 0 && game_id < *actual && clients[game_id].etat == EnPartie)
+         if (client->etat != Observateur)
          {
-            if (clients[game_id].game->private == false)
+            if (game_id >= 0 && game_id < *actual && clients[game_id].etat == EnPartie)
             {
-               client->etat = Observateur;
-               client->game = clients[game_id].game;
-               add_observer(client->game, client);
-               display_board_Observateur(client);
-            }
-            else if (is_friend(clients[game_id].game->player1, client->name) || is_friend(clients[game_id].game->player2, client->name))
-            {
-               client->etat = Observateur;
-               client->game = clients[game_id].game;
-               add_observer(client->game, client);
-               display_board_Observateur(client);
+               if (clients[game_id].game->private == false)
+               {
+                  client->etat = Observateur;
+                  client->game = clients[game_id].game;
+                  add_observer(client->game, client);
+                  display_board_Observateur(client);
+               }
+               else if (is_friend(clients[game_id].game->player1, client->name) || is_friend(clients[game_id].game->player2, client->name))
+               {
+                  client->etat = Observateur;
+                  client->game = clients[game_id].game;
+                  add_observer(client->game, client);
+                  display_board_Observateur(client);
+               }
+               else
+               {
+                  write_client(client->sock, "Vous ne pouvez pas observer cette partie.");
+               }
             }
             else
             {
-               write_client(client->sock, "Vous ne pouvez pas observer cette partie.");
+               write_client(client->sock, "ID de partie invalide.");
             }
          }
          else
          {
-            write_client(client->sock, "ID de partie invalide.");
+            write_client(client->sock, "Vous êtes déjà observateur.");
          }
       }
       else
