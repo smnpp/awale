@@ -209,6 +209,8 @@ void log_game_to_json(Game *game, const char *winner_name, const char *moves)
         {
             cJSON_AddItemToArray(board_state, cJSON_CreateNumber(game->board_states[state][i]));
         }
+        cJSON_AddItemToArray(board_state, cJSON_CreateNumber(game->board_states[state][12])); // Score Joueur 1
+        cJSON_AddItemToArray(board_state, cJSON_CreateNumber(game->board_states[state][13])); // Score Joueur 2
         cJSON_AddItemToArray(boards, board_state);
     }
 
@@ -254,6 +256,8 @@ void initialiserGame(Game *game, Client *player1, Client *player2)
     {
         game->board_states[0][i] = 4; // État initial : 4 graines par trou
     }
+    game->board_states[0][12] = 0; // Score Joueur 1
+    game->board_states[0][13] = 0; // Score Joueur 2
     game->nb_states = 1;
     game->game_over = 0;
     game->private = false;
@@ -268,6 +272,8 @@ void store_board_state(Game *game)
         {
             game->board_states[game->nb_states][i] = game->jeu.trous[i];
         }
+        game->board_states[game->nb_states][12] = game->jeu.scoreJoueur1;
+        game->board_states[game->nb_states][13] = game->jeu.scoreJoueur2;
         game->nb_states++;
     }
 }

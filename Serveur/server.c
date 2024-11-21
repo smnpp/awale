@@ -618,11 +618,6 @@ void display_help(Client *client)
                               "/logout - Se déconnecter\n");
 }
 
-void send_notification(Client *client, const char *message)
-{
-   write_client(client->sock, message);
-}
-
 void display_games_list(Client *clients, Client *current_client, int *actual)
 {
    int found = 0;
@@ -1474,100 +1469,32 @@ void read_bio(Client *client, Client *clients, int actual, const char *target_na
    write_client(client->sock, "Utilisateur non trouvé.\n");
 }
 
-void display_board_history(Client *client, cJSON *board_state, const char *player1_name, const char *player2_name, int score1, int score2)
+void display_board_history(Client *client, int *board_line, const char *player1_name, const char *player2_name)
 {
    char buffer[BUF_SIZE];
 
-   // En-tête avec noms des joueurs
    snprintf(buffer, BUF_SIZE,
             "\nPlateau:\n"
-            "==============================\n"
-            "%s : ",
-            player2_name);
+            "==============================\n");
    write_client(client->sock, buffer);
 
-   // Afficher les trous du joueur 2 (haut)
-   for (int i = TROUS - 1; i >= TROUS / 2; i--)
-   {
-      cJSON *trou = cJSON_GetArrayItem(board_state, i);
-      char trou_str[8];
-      snprintf(trou_str, sizeof(trou_str), "%02d ", trou->valueint);
-      write_client(client->sock, trou_str);
-   }
-
-   // Afficher les trous du joueur 1 (bas)
-   snprintf(buffer, BUF_SIZE, "\n%s : ", player1_name);
+   snprintf(buffer, BUF_SIZE,
+            "%s : %d %d %d %d %d %d\n"
+            "%s : %d %d %d %d %d %d\n",
+            player2_name, board_line[11], board_line[10], board_line[9], board_line[8], board_line[7], board_line[6],
+            player1_name, board_line[0], board_line[1], board_line[2], board_line[3], board_line[4], board_line[5]);
    write_client(client->sock, buffer);
 
-   for (int i = 0; i < TROUS / 2; i++)
-   {
-      cJSON *trou = cJSON_GetArrayItem(board_state, i);
-      char trou_str[8];
-      snprintf(trou_str, sizeof(trou_str), "%02d ", trou->valueint);
-      write_client(client->sock, trou_str);
-   }
+   int currrent_score1 = board_line[12];
+   int currrent_score2 = board_line[13];
 
    // Afficher les scores
    snprintf(buffer, BUF_SIZE,
-            "\n==============================\n"
+            "==============================\n"
             "Scores - %s: %d | %s: %d\n"
             "==============================\n",
-            player1_name, score1,
-            player2_name, score2);
-   write_client(client->sock, buffer);
-}
-
-void display_board_replay(Client *client, Game *game, const char *player1_name, const char *player2_name)
-{
-   char buffer[BUF_SIZE];
-
-   // En-tête avec noms des joueurs
-   snprintf(buffer, BUF_SIZE,
-            "\nPlateau actuel:\n"
-            "==============================\n"
-            "%s : ",
-            player2_name);
-   write_client(client->sock, buffer);
-
-   // Trous du joueur 2 (haut) avec compteur pour l'alignement
-   int count = 0;
-   for (int i = TROUS - 1; i >= TROUS / 2; i--)
-   {
-      char trou[8];
-      if (game->jeu.trous[i] < 10)
-         snprintf(trou, sizeof(trou), "0%d ", game->jeu.trous[i]);
-      else
-         snprintf(trou, sizeof(trou), "%d ", game->jeu.trous[i]);
-      write_client(client->sock, trou);
-      count++;
-      if (count == 6)
-         write_client(client->sock, "\n");
-   }
-
-   // Trous du joueur 1 (bas)
-   snprintf(buffer, BUF_SIZE, "%s : ", player1_name);
-   write_client(client->sock, buffer);
-
-   count = 0;
-   for (int i = 0; i < TROUS / 2; i++)
-   {
-      char trou[8];
-      if (game->jeu.trous[i] < 10)
-         snprintf(trou, sizeof(trou), "0%d ", game->jeu.trous[i]);
-      else
-         snprintf(trou, sizeof(trou), "%d ", game->jeu.trous[i]);
-      write_client(client->sock, trou);
-      count++;
-      if (count == 6)
-         write_client(client->sock, "\n");
-   }
-
-   // Scores
-   snprintf(buffer, BUF_SIZE,
-            "==============================\n"
-            "Scores - %s: %d | %s: %d\n",
-            player1_name, game->jeu.scoreJoueur1,
-            player2_name, game->jeu.scoreJoueur2);
+            player1_name, currrent_score1,
+            player2_name, currrent_score2);
    write_client(client->sock, buffer);
 }
 
@@ -1619,73 +1546,34 @@ void watch_game(Client *client, const char *game_id_str)
    cJSON *player1 = cJSON_GetObjectItem(selected_game, "player1");
    cJSON *player2 = cJSON_GetObjectItem(selected_game, "player2");
    cJSON *winner = cJSON_GetObjectItem(selected_game, "winner");
-   cJSON *date = cJSON_GetObjectItem(selected_game, "date");
    cJSON *boards = cJSON_GetObjectItem(selected_game, "boards");
-   cJSON *score1 = cJSON_GetObjectItem(selected_game, "score1");
-   cJSON *score2 = cJSON_GetObjectItem(selected_game, "score2");
-
-   // Afficher les informations de la partie
-   char header[BUF_SIZE];
-   snprintf(header, sizeof(header),
-            "\n=== Partie #%d ===\n"
-            "Date : %s\n"
-            "Joueurs : %s VS %s\n"
-            "Gagnant : %s\n"
-            "\nAppuyez sur Entrée pour voir chaque état du plateau...\n",
-            game_id,
-            date->valuestring,
-            player1->valuestring,
-            player2->valuestring,
-            winner->valuestring);
-   write_client(client->sock, header);
 
    // Parcourir tous les états du plateau
    int nb_states = cJSON_GetArraySize(boards);
+   int boards_matrix[nb_states][14];
+
    for (int i = 0; i < nb_states; i++)
    {
-      char input[BUF_SIZE];
-      read_client(client->sock, input); // Attendre que l'utilisateur appuie sur Entrée
-
       cJSON *board_state = cJSON_GetArrayItem(boards, i);
-
-      // Afficher le numéro de l'état
-      char state_info[64];
-      snprintf(state_info, sizeof(state_info),
-               "\nÉtat %d/%d :\n",
-               i + 1, nb_states);
-      write_client(client->sock, state_info);
-
-      // Gérer les scores
-      int current_score1 = 0, current_score2 = 0;
-      if (i == nb_states - 1) // Pour le dernier état, utiliser les scores finaux
+      for (int j = 0; j < 14; j++)
       {
-         current_score1 = score1->valueint;
-         current_score2 = score2->valueint;
+         boards_matrix[i][j] = cJSON_GetArrayItem(board_state, j)->valueint;
       }
+   }
 
-      display_board_history(client, board_state,
-                            player1->valuestring,
-                            player2->valuestring,
-                            current_score1, current_score2);
-
-      // Message d'instruction pour continuer
-      if (i < nb_states - 1)
-      {
-         write_client(client->sock, "\nAppuyez sur Entrée + Espace pour continuer...");
-      }
+   for (int i = 0; i < nb_states; i++)
+   {
+      display_board_history(client, boards_matrix[i], player1->valuestring, player2->valuestring);
    }
 
    // Message de fin
    char final_message[BUF_SIZE];
    snprintf(final_message, sizeof(final_message),
             "\nFin de la partie\n"
-            "Score final : %s (%d) - (%d) %s\n"
             "Gagnant : %s\n",
-            player1->valuestring, score1->valueint,
-            score2->valueint, player2->valuestring,
             winner->valuestring);
    write_client(client->sock, final_message);
-
+   write_client(client->sock, "Tapez /help pour voir le menu d'aide.\n");
    cJSON_Delete(games);
 }
 
@@ -1729,16 +1617,14 @@ void display_game_history(Client *client)
       cJSON *player2 = cJSON_GetObjectItem(game, "player2");
       cJSON *winner = cJSON_GetObjectItem(game, "winner");
       cJSON *date = cJSON_GetObjectItem(game, "date");
-      cJSON *score1 = cJSON_GetObjectItem(game, "score1");
-      cJSON *score2 = cJSON_GetObjectItem(game, "score2");
 
       char message[BUF_SIZE];
       snprintf(message, sizeof(message),
-               "[%d] %s | %s (%d) VS %s (%d) - Gagnant: %s\n",
+               "[%d] %s | %s VS %s | gagnant: %s\n",
                id->valueint,
                date->valuestring,
-               player1->valuestring, score1->valueint,
-               player2->valuestring, score2->valueint,
+               player1->valuestring,
+               player2->valuestring,
                winner->valuestring);
       write_client(client->sock, message);
    }

@@ -14,7 +14,6 @@ enum Etat
    EnPartie,
    Observateur,
    Matchmaking,
-   Replay
 };
 enum Tour
 {

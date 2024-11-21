@@ -18,7 +18,7 @@ typedef struct Game
     Client *observers[MAX_CLIENTS];
     int nb_observers;
     bool private;
-    int board_states[MAX_MOVES][TROUS];
+    int board_states[MAX_MOVES][TROUS + 2];
     int nb_states;
 
     Awale jeu; // Plateau de jeu utilisé par les fonctions de awale.c
