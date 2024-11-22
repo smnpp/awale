@@ -260,7 +260,7 @@ void initialiserGame(Game *game, Client *player1, Client *player2)
     game->board_states[0][13] = 0; // Score Joueur 2
     game->nb_states = 1;
     game->game_over = 0;
-    game->private = false;
+    game->is_private = false;
     initialiserPlateau(&game->jeu);
 }
 

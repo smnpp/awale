@@ -17,7 +17,7 @@ typedef struct Game
     int game_over;
     Client *observers[MAX_CLIENTS];
     int nb_observers;
-    bool private;
+    bool is_private;
     int board_states[MAX_MOVES][TROUS + 2];
     int nb_states;
 

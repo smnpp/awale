@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
-#include <stdarg.h>
 #include <time.h>
 
 #include "server.h"
@@ -643,14 +642,14 @@ void process_command(Client *client, char *buffer, Client *clients, int *actual)
          if (client->etat == EnPartie)
          {
             // Vérifier si la partie est déjà privée
-            if (client->game->private == true)
+            if (client->game->is_private == true)
             {
                write_client(client->sock, "La partie est déjà privée.\n");
                return;
             }
 
             // Rendre la partie privée
-            client->game->private = true;
+            client->game->is_private = true;
 
             // Notifier les deux joueurs
             write_client(client->sock, "La partie est maintenant privée.\n");
@@ -687,14 +686,14 @@ void process_command(Client *client, char *buffer, Client *clients, int *actual)
          if (client->etat == EnPartie)
          {
             // Vérifier si la partie est déjà privée
-            if (client->game->private == false)
+            if (client->game->is_private == false)
             {
                write_client(client->sock, "La partie est déjà publique.\n");
                return;
             }
 
             // Rendre la partie privée
-            client->game->private = false;
+            client->game->is_private = false;
 
             // Notifier les deux joueurs
             write_client(client->sock, "La partie est maintenant publique.\n");
@@ -820,7 +819,7 @@ void process_command(Client *client, char *buffer, Client *clients, int *actual)
          {
             if (game_index >= 0 && game_index < *actual && clients[game_index].etat == EnPartie)
             {
-               if (clients[game_index].game->private == false)
+               if (clients[game_index].game->is_private == false)
                {
                   client->etat = Observateur;
                   client->game = clients[game_index].game;
