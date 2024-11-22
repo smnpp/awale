@@ -525,11 +525,12 @@ void display_games_list(Client *clients, Client *current_client, int *actual)
 
    for (int i = 0; i < *actual; i++)
    {
+      int game_index = (i / 2) + 1;
       if (clients[i].etat == EnPartie && !games_shown[i])
       {
          char message[256];
          snprintf(message, sizeof(message), "\n[%d] %s VS %s",
-                  i,
+                  game_index,
                   clients[i].name,
                   clients[i].opponent->name);
          write_client(current_client->sock, message);
@@ -807,6 +808,7 @@ void process_command(Client *client, char *buffer, Client *clients, int *actual)
       {
          char *endptr;
          int game_id = strtol(id_str, &endptr, 10);
+         int game_index = (game_id * 2) - 1;
 
          // Vérifier si la conversion est invalide
          if (endptr == buffer || *endptr != '\0')
@@ -816,19 +818,19 @@ void process_command(Client *client, char *buffer, Client *clients, int *actual)
          }
          if (client->etat != Observateur)
          {
-            if (game_id >= 0 && game_id < *actual && clients[game_id].etat == EnPartie)
+            if (game_index >= 0 && game_index < *actual && clients[game_index].etat == EnPartie)
             {
-               if (clients[game_id].game->private == false)
+               if (clients[game_index].game->private == false)
                {
                   client->etat = Observateur;
-                  client->game = clients[game_id].game;
+                  client->game = clients[game_index].game;
                   add_observer(client->game, client);
                   display_board_Observateur(client);
                }
-               else if (is_friend(clients[game_id].game->player1, client->name) || is_friend(clients[game_id].game->player2, client->name))
+               else if (is_friend(clients[game_index].game->player1, client->name) || is_friend(clients[game_index].game->player2, client->name))
                {
                   client->etat = Observateur;
-                  client->game = clients[game_id].game;
+                  client->game = clients[game_index].game;
                   add_observer(client->game, client);
                   display_board_Observateur(client);
                }
