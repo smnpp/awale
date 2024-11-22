@@ -1,11 +1,11 @@
-# Jeu Awalé Multijoueur
+# Awalé
 
 ## Introduction
 
 Ce projet implémente une version multijoueur du jeu traditionnel africain
 **Awalé**. Il repose sur une architecture client-serveur où le serveur gère les
-parties et les interactions, et les clients permettent aux utilisateurs de
-seconnecter et de jouer.
+parties et les interactions, et les clients permettent aux utilisateurs de se
+connecter et de jouer.
 
 ## Installation
 
@@ -13,8 +13,8 @@ seconnecter et de jouer.
 
 -   **Système** : Linux, macOS ou Windows.
 -   **Compilateur** : `gcc`
--   **Bibliothèques** :
-    -   `cJSON` (fournie en tant que sous-module dans le dossier `3rdparty`).
+-   **Bibliothèques** : `cJSON` (fournie en tant que sous-module dans le dossier
+    `3rdparty`).
 
 ### Étapes d'installation
 
@@ -121,13 +121,13 @@ seconnecter et de jouer.
     -   `server.c` : Implémentation du serveur.
     -   `server.h` : Déclarations et constantes spécifiques au serveur.
 
--   **`awale.c` et `awale.h`** : Contiennent la logique du jeu (plateau, règles,
+-   `awale.c` et `awale.h` : Contiennent la logique du jeu (plateau, règles,
     etc.).
--   **`game.c` et `game.h`** : Gestion des parties, des joueurs, et de
-    l'interaction client-serveur.
--   **`3rdparty/cJSON/`** : Bibliothèque externe pour manipuler les fichiers
-    JSON (ex : sauvegarde des parties, liste d'amis).
--   **`Makefile`** : Automatisation de la compilation.
+-   `game.c` et `game.h` : Gestion des parties, des joueurs, et de l'interaction
+    client-serveur.
+-   `3rdparty/cJSON/` : Bibliothèque externe pour manipuler les fichiers JSON
+    (ex : sauvegarde des parties, liste d'amis).
+-   `Makefile` : Automatisation de la compilation.
 -   **`bin/`** : Contient les fichiers exécutables générés (`server_exec` et
     `client_exec`).
 
@@ -143,4 +143,4 @@ et le redistribuer, à condition de mentionner l'auteur original.
 -   En cas de problème, vérifiez les journaux ou assurez-vous que les
     dépendances sont correctement configurées.
 -   Pour toute question ou amélioration, veuillez contacter l'un des auteurs :
-    **simon.perret@insa-lyon.fr** || **jassir.habba@insa-lyon.fr**
+    **simon.perret@insa-lyon.fr** ou **jassir.habba@insa-lyon.fr** s
