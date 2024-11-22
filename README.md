@@ -77,6 +77,8 @@ seconnecter et de jouer.
     ./bin/client_exec 127.0.0.1 adalovelace
     ```
 
+---
+
 ## Commandes Disponibles
 
 ### Commandes Générales
@@ -105,6 +107,8 @@ seconnecter et de jouer.
 -   `/writebio <texte>` : Définit votre biographie.
 -   `/readbio <pseudo>` : Consulte la biographie d'un joueur.
 
+---
+
 ## Structure Générale du Projet
 
 -   **`Client/`** : Contient les fichiers sources pour le client :
@@ -126,6 +130,8 @@ seconnecter et de jouer.
 -   **`Makefile`** : Automatisation de la compilation.
 -   **`bin/`** : Contient les fichiers exécutables générés (`server_exec` et
     `client_exec`).
+
+---
 
 ## Licence
 
