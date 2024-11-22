@@ -207,3 +207,255 @@ personnalisation.
 
 Pour toute question ou amélioration, veuillez contacter l'auteur à :
 **simon.perret@insa-lyon.fr** ou bien **jassir.habba@insa-lyon.fr**
+
+Awale Multiplayer Game Introduction
+
+This project implements a multiplayer version of the Awale game. It consists of
+a server program that manages games and multiple client programs for players to
+interact with the game. The game allows players to join matches, play moves, and
+observe ongoing games. Project Structure
+
+The project is organized into the following files and directories: Directories:
+
+    Client/: Contains the client-side code (client.c, client.h).
+    Serveur/: Contains the server-side code (server.c, server.h).
+    3rdparty/: Contains the cJSON library for JSON handling.
+    bin/: The build directory where compiled executables are generated.
+
+Key Files:
+
+    awale.c and awale.h: Contains the core logic for the Awale game (game board, moves, and rules).
+    game.c and game.h: Implements game management (creating games, tracking moves, and game states).
+    Makefile: Automates the build process for the client and server programs.
+
+Features
+
+    Multiplayer: Supports multiple players and observers.
+    Commands: Includes various commands for players, such as /play, /observe, /msg, and /quit.
+    Persistence: Saves game history and player information using JSON (via cJSON library).
+    Real-time updates: Players and observers receive real-time updates of the game board.
+
+Prerequisites
+
+    A C compiler (e.g., GCC).
+    make utility for build automation.
+    POSIX-compliant environment for compilation (Linux or macOS).
+    Optional: Windows environment requires MinGW for compatibility.
+
+Compilation
+
+Run the following commands to compile the server and client programs:
+
+    Clone the repository and navigate to the project directory.
+    Compile the project using the provided Makefile:
+
+    make
+
+    The compiled executables will be available in the bin/ directory:
+        bin/client_exec: The client executable.
+        bin/server_exec: The server executable.
+
+Running the Programs Start the Server
+
+    Navigate to the bin/ directory.
+    Start the server:
+
+    ./server_exec
+
+Start a Client
+
+    Navigate to the bin/ directory.
+    Connect a client to the server by specifying the server address and username:
+
+    ./client_exec [server_address] [username]
+
+    Replace [server_address] with the server's IP or hostname and [username] with a unique player name.
+
+Commands (Client-side)
+
+    /list: Show all connected players.
+    /play <username>: Request a match with another player.
+    /observe <game_id>: Observe an ongoing game.
+    /msg <username> <message>: Send a private message to a player.
+    /all <message>: Send a message to all connected players.
+    /quit: Quit the current game.
+    /logout: Disconnect from the server.
+    /help: Display the list of available commands.
+
+Cleaning Up
+
+To clean the build files and executables, run:
+
+make clean
+
+Troubleshooting
+
+    Connection issues: Ensure the server is running and reachable from the client machine.
+    Compilation errors: Verify that GCC and make are properly installed.
+    Windows users: Use MinGW or a similar environment to compile and run the project.
+
+Future Improvements
+
+    Enhance security by adding authentication mechanisms.
+    Improve error handling and user feedback.
+    Add a graphical user interface (GUI) for a more user-friendly experience.
+
+License
+
+This project is developed for educational purposes and may be adapted or
+extended with proper attribution.
+
+Voici une version améliorée et bien structurée de votre `README.md` :
+
+````markdown
+# Jeu Awalé Multijoueur
+
+## Introduction
+
+Ce projet implémente une version multijoueur du jeu traditionnel africain
+**Awalé**. L'application est divisée en deux parties : un **serveur** pour gérer
+les parties et les connexions, et un **client** pour permettre aux joueurs de se
+connecter, jouer, et interagir avec le serveur.
+
+Le jeu suit les règles officielles et permet une expérience immersive avec des
+fonctionnalités comme l'observation des parties, l'historique des jeux, et un
+système de liste d'amis.
+
+---
+
+## Fonctionnalités
+
+### Client
+
+-   Connexion au serveur avec un pseudo.
+-   Démarrage et participation à une partie.
+-   Envoi de commandes pour interagir avec d'autres joueurs.
+-   Système de messagerie privée et publique.
+-   Gestion d'une liste d'amis (ajout, suppression, consultation).
+-   Écriture et lecture de biographies.
+-   Affichage de l'historique des parties jouées.
+
+### Serveur
+
+-   Gestion des connexions multiples (jusqu'à 100 clients).
+-   Organisation des parties avec un suivi des scores.
+-   Observation des parties en cours.
+-   Archivage des parties terminées dans un fichier JSON.
+-   Commandes pour administrer le jeu, y compris le matchmaking.
+
+---
+
+## Installation
+
+### Prérequis
+
+-   **Système** : Linux, macOS ou Windows.
+-   **Compilateur** : `gcc` (version 4.8 ou plus récente).
+-   **Bibliothèques** : `cJSON` (fournie dans le dossier `3rdparty`).
+
+### Compilation
+
+1. Clonez le projet :
+    ```bash
+    git clone <url_du_projet>
+    cd <nom_du_dossier>
+    ```
+````
+
+2. Compilez le projet :
+    ```bash
+    make
+    ```
+    Les exécutables pour le client et le serveur seront créés dans le dossier
+    `bin/`.
+
+---
+
+## Utilisation
+
+### Démarrer le Serveur
+
+1. Lancez le serveur :
+
+    ```bash
+    ./bin/server_exec
+    ```
+
+2. Le serveur écoute sur le port **5788**. Il est maintenant prêt à accepter les
+   connexions.
+
+### Lancer un Client
+
+1. Lancez un client en spécifiant l'adresse du serveur et votre pseudo :
+    ```bash
+    ./bin/client_exec <adresse_du_serveur> <pseudo>
+    ```
+    Exemple :
+    ```bash
+    ./bin/client_exec 127.0.0.1 Joueur1
+    ```
+
+### Commandes Disponibles
+
+#### Commandes Générales
+
+-   `/help` : Affiche la liste des commandes.
+-   `/list` : Affiche la liste des joueurs connectés.
+-   `/msg <pseudo> <message>` : Envoie un message privé à un joueur.
+-   `/all <message>` : Envoie un message à tous les joueurs.
+-   `/logout` : Se déconnecte du serveur.
+
+#### Commandes de Jeu
+
+-   `/play <pseudo>` : Demande à jouer avec un joueur.
+-   `/accept` : Accepte une demande de partie.
+-   `/decline` : Refuse une demande de partie.
+-   `/quit` : Quitte une partie en cours.
+-   `/matchmaking` : Rejoint la file d'attente pour jouer avec un adversaire
+    aléatoire.
+-   `/games` : Affiche les parties en cours.
+-   `/observe <id>` : Observe une partie en cours.
+
+#### Gestion des Amis et Biographies
+
+-   `/addfriend <pseudo>` : Ajoute un joueur à votre liste d'amis.
+-   `/removefriend <pseudo>` : Retire un joueur de votre liste d'amis.
+-   `/friends` : Affiche votre liste d'amis.
+-   `/writebio <texte>` : Définit votre biographie.
+-   `/readbio <pseudo>` : Consulte la biographie d'un joueur.
+
+---
+
+## Structure des Fichiers
+
+-   **`Client/`** : Contient les fichiers sources pour le client (`client.c`,
+    `client.h`).
+-   **`Serveur/`** : Contient les fichiers sources pour le serveur (`server.c`,
+    `server.h`).
+-   **`awale.c` et `awale.h`** : Gestion des règles et du plateau de jeu.
+-   **`game.c` et `game.h`** : Gestion des parties et des joueurs.
+-   **`3rdparty/cJSON/`** : Bibliothèque externe pour gérer le JSON.
+-   **`Makefile`** : Script pour compiler le projet.
+
+---
+
+## Contributeurs et Notes
+
+-   **Auteur principal** : Simon Perret
+-   **Remerciements** : Merci à tous ceux qui ont participé aux tests et aux
+    améliorations.
+
+---
+
+## Notes supplémentaires
+
+-   Les fichiers JSON des parties et des amis sont générés automatiquement dans
+    le dossier `data/`. Assurez-vous que ce dossier existe et dispose des
+    permissions nécessaires.
+-   En cas de problème, consultez les journaux ou vérifiez la configuration
+    réseau.
+
+```
+
+Cette version suit une structure claire et professionnelle. Dites-moi si vous souhaitez personnaliser ou ajouter des sections spécifiques !
+```
