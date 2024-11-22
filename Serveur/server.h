@@ -59,25 +59,11 @@ typedef struct in_addr IN_ADDR;
 #include "client.h"
 #include "../game.h"
 
-// static void init(void);
-// static void end(void);
-// static void app(void);
-// static int init_connection(void);
-// static void end_connection(int sock);
 int read_client(SOCKET sock, char *buffer);
 void write_client(SOCKET sock, const char *buffer);
-// static void send_message_to_all_clients(Client *clients, Client client, int actual, const char *buffer, char from_server);
-// static void remove_client(Client *clients, int to_remove, int *actual);
-// static void clear_clients(Client *clients, int actual);
-// static int inscrireClient(const char *name);
-// static int listClients(Client clients[], int index, int *actual);
-// static int deconnecterClient(Client *clients, int to_remove, int *actual);
-// static int deconnecterServeur(Client *clients, int to_remove, int *actual);
 void start_game(Client *client1, Client *client2);
-void listParties(Client *clients, int index, int *actual);
 int send_message_to_client_by_name(Client *clients, int actual, const char *sender_name, const char *target_name, const char *message);
 void send_message_to_all_clients(Client *clients, const char *sender_name, int actual, const char *message);
-void send_notification(Client *client, const char *format);
 void display_help(Client *client);
 void process_command(Client *client, char *buffer, Client *clients, int *actual);
 cJSON *load_friends_json(void);

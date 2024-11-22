@@ -13,7 +13,6 @@
 int init_connection(void);
 int inscrireClient(const char *name, Client *clients, int *actual);
 int deconnecterClient(Client *clients, int i, int *actual);
-int listClients(Client clients[], int index, int *actual);
 void clear_clients(Client *clients, int actual);
 void remove_client(Client *clients, int to_remove, int *actual);
 int deconnecterServeur(Client *clients, int i, int *actual);
@@ -347,54 +346,6 @@ int inscrireClient(const char *name, Client *clients, int *actual)
    return 1;
 }
 
-int listClients(Client clients[], int index, int *actual)
-{
-   int found = 0;
-   write_client(clients[index].sock, "==============================");
-
-   for (int i = 0; i < *actual; i++)
-   {
-      if (i != index)
-      {
-         char message[256];
-         if (clients[i].etat == EnPartie)
-         {
-            snprintf(message, sizeof(message), "\n%d: %s - En partie", i, clients[i].name);
-         }
-         else
-         {
-            snprintf(message, sizeof(message), "\n%d: %s - Disponible", i, clients[i].name);
-            found += 1;
-         }
-         write_client(clients[index].sock, message);
-      }
-   }
-
-   if (*actual == 1)
-   {
-      write_client(clients[index].sock, "\nAucun autre joueur n'est connecté.");
-      clients[index].etat = Enattente;
-      return 0;
-   }
-   else
-   {
-      if (found == 0)
-      {
-         write_client(clients[index].sock, "\nAucun autre joueur n'est disponible.");
-         clients[index].etat = Enattente;
-         return -1;
-      }
-      else
-      {
-         write_client(clients[index].sock, "\n==============================");
-         write_client(clients[index].sock, "\nVeuillez choisir un numéro de joueur :");
-
-         clients[index].etat = DemandeDePartie;
-         return 1;
-      }
-   }
-}
-
 int deconnecterClient(Client *clients, int i, int *actual)
 {
 
@@ -459,61 +410,6 @@ int name_exists(char **listname, int count, const char *name)
       }
    }
    return 0; // Name not found
-}
-
-void listParties(Client *clients, int index, int *actual)
-{
-   int found = 0;
-   write_client(clients[index].sock, "\n==============================");
-
-   // Allocate memory for listname with a maximum size of *actual * 2
-   char **listname = malloc((*actual * 2) * sizeof(char *));
-   int name_count = 0;
-
-   for (int i = 0; i < *actual; i++)
-   {
-      if (i != index)
-      {
-         char message[256];
-         if (clients[i].etat == EnPartie)
-         {
-            // Check if either clients[i].name or clients[i].opponent->name is already in listname
-            if (name_exists(listname, name_count, clients[i].name) ||
-                name_exists(listname, name_count, clients[i].opponent->name))
-            {
-               // Skip this client, as they or their opponent are already in a game
-               continue;
-            }
-
-            // Add clients[i].name to listname if not already present
-            listname[name_count] = strdup(clients[i].name);
-            name_count++;
-            // Add clients[i].opponent->name to listname if not already present
-            listname[name_count] = strdup(clients[i].opponent->name);
-            name_count++;
-
-            snprintf(message, sizeof(message), "\n%d: %s -VS- %s", i, clients[i].name, clients[i].opponent->name);
-            found += 1;
-
-            write_client(clients[index].sock, message);
-            write_client(clients[index].sock, "\n==============================");
-         }
-      }
-   }
-   clients[index].etat = Observateur;
-
-   if (found == 0)
-   {
-      write_client(clients[index].sock, "\nAucune partie en cours.");
-      clients[index].etat = Initialisation;
-   }
-
-   // Free the memory allocated for listname
-   for (int k = 0; k < name_count; k++)
-   {
-      free(listname[k]);
-   }
-   free(listname);
 }
 
 int send_message_to_client_by_name(Client *clients, int actual, const char *sender_name, const char *target_name, const char *message)
